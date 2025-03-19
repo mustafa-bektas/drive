@@ -34,7 +34,7 @@ int main(void) {
     // Initialization
     const int screenWidth = 1280;
     const int screenHeight = 720;
-    InitWindow(screenWidth, screenHeight, "Simple 3D Car Game");
+    InitWindow(screenWidth, screenHeight, "Car");
 
     // Define and configure the camera
     Camera camera = { 0 };
@@ -164,9 +164,8 @@ void DrawScene(const Camera *camera, const Model *carModel, const Car *car, cons
     EndMode3D();
 
     // Draw overlay text instructions and car status
-    DrawText("Use arrow keys to control the car", 10, 10, 20, BLACK);
-    DrawText(TextFormat("Car Speed: %.2f", car->speed), 10, 40, 20, BLACK);
-    DrawText(TextFormat("Car Rotation: %.2f degrees", car->rotation * RAD2DEG), 10, 70, 20, BLACK);
-    DrawText(TextFormat("Steering Angle: %.2f degrees", car->steeringAngle * RAD2DEG), 10, 100, 20, BLACK);
-    DrawText(TextFormat("Car Position: (%.2f, %.2f, %.2f)", car->position.x, car->position.y, car->position.z), 10, 130, 20, BLACK);
+    DrawText(TextFormat("Car Speed: %.2f", car->speed), 10, 10, 20, BLACK);
+    DrawText(TextFormat("Car Rotation: %.2f degrees", car->rotation * RAD2DEG), 10, 40, 20, BLACK);
+    DrawText(TextFormat("Steering Angle: %.2f degrees", car->steeringAngle * RAD2DEG), 10, 70, 20, BLACK);
+    DrawText(TextFormat("Car Position: (%.2f, %.2f, %.2f)", car->position.x, car->position.y, car->position.z), 10, 100, 20, BLACK);
 }
