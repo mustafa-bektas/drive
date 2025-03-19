@@ -4,14 +4,26 @@
 // Car structure
 typedef struct {
     Vector3 position;
+    Vector3 velocity;
+    Vector3 acceleration;
     float speed;
     float rotation;  // in radians
+    float steeringAngle; // in radians
+    float steeringSpeed; // in radians per second
 } Car;
 
 // Define the RAD2DEG macro if it doesn't exist
 #ifndef RAD2DEG
     #define RAD2DEG (180.0f/PI)
 #endif
+
+const float carWidth = 2.0f;  // Width of the car
+const float carLength = 4.0f; // Length of the car
+const float wheelBase = 2.8f;
+const float l_r = 1.2f;
+const float l_f = 1.6f;
+const float carHeight = 1.0f; // Height of the car
+const float steeringSpeedConstant = 1.0f;
 
 // Function prototypes
 void UpdateCar(Car *car, float deltaTime);
@@ -40,7 +52,7 @@ int main(void) {
     };
 
     // Create the car model (a simple box)
-    Model carModel = LoadModelFromMesh(GenMeshCube(2.0f, 1.0f, 4.0f));
+    Model carModel = LoadModelFromMesh(GenMeshCube(carWidth, carHeight, carLength));
 
     // Floor position (a large plane)
     Vector3 floorPosition = { 0.0f, 0.0f, 0.0f };
@@ -91,13 +103,46 @@ void UpdateCar(Car *car, float deltaTime) {
 
     // Steering: only allow steering when the car is moving
     if (fabs(car->speed) > 0.1f) {
-        if (IsKeyDown(KEY_RIGHT)) car->rotation -= 2.0f * deltaTime;
-        if (IsKeyDown(KEY_LEFT))  car->rotation += 2.0f * deltaTime;
+        if (IsKeyDown(KEY_LEFT)) {
+            car->steeringSpeed = steeringSpeedConstant * deltaTime;
+            car->steeringAngle += car->steeringSpeed;
+            if (car->steeringAngle > 0.5f) car->steeringAngle = 0.5f;
+        }
+        else  if (IsKeyDown(KEY_RIGHT)) {
+            car->steeringSpeed = -steeringSpeedConstant * deltaTime;
+            car->steeringAngle += car->steeringSpeed;
+            if (car->steeringAngle < -0.5f) car->steeringAngle = -0.5f;
+        } else {
+            // Gradually reduce steering angle when no input
+            if (car->steeringAngle > 0.0f) {
+                car->steeringAngle -= 1.0f * deltaTime;
+                if (car->steeringAngle < 0.0f) car->steeringAngle = 0.0f;
+            } else if (car->steeringAngle < 0.0f) {
+                car->steeringAngle += 1.0f * deltaTime;
+                if (car->steeringAngle > 0.0f) car->steeringAngle = 0.0f;
+            }
+        }     
     }
 
-    // Update car's position based on its speed and rotation
-    car->position.x += car->speed * deltaTime * sinf(car->rotation);
-    car->position.z += car->speed * deltaTime * cosf(car->rotation);
+    float beta = atan2f((l_r) * tanf(car->steeringAngle), (l_f + l_r));
+
+    float omega_dot = car->speed * cosf(beta) * tanf(car->steeringAngle) / wheelBase;
+    car->rotation += omega_dot * deltaTime; // Update rotation based on steering angle
+    if (car->rotation > 2 * PI) car->rotation -= 2 * PI;
+    if (car->rotation < 0) car->rotation += 2 * PI; 
+
+    // Update car's velocity based on speed and rotation
+    car->velocity.z = car->speed * cosf(car->rotation + beta);
+    car->velocity.x = car->speed * sinf(car->rotation + beta);
+
+    // Update car's position based on velocity
+    car->position.x += car->velocity.x * deltaTime;
+    car->position.z += car->velocity.z * deltaTime;
+
+    // Keep the car above the ground
+    if (car->position.y < 0.5f) {
+        car->position.y = 0.5f;
+    }
 }
 
 // Updates the camera to follow the car.
@@ -122,4 +167,6 @@ void DrawScene(const Camera *camera, const Model *carModel, const Car *car, cons
     DrawText("Use arrow keys to control the car", 10, 10, 20, BLACK);
     DrawText(TextFormat("Car Speed: %.2f", car->speed), 10, 40, 20, BLACK);
     DrawText(TextFormat("Car Rotation: %.2f degrees", car->rotation * RAD2DEG), 10, 70, 20, BLACK);
+    DrawText(TextFormat("Steering Angle: %.2f degrees", car->steeringAngle * RAD2DEG), 10, 100, 20, BLACK);
+    DrawText(TextFormat("Car Position: (%.2f, %.2f, %.2f)", car->position.x, car->position.y, car->position.z), 10, 130, 20, BLACK);
 }
