@@ -22,6 +22,7 @@ typedef struct {
     float minMovementSpeed;  // Minimum speed for steering to work
     int gearRatio;
     float tireRadius;
+    float inertiaAtEngine;
 } CarPhysicsConfig;
 
 // Car structure
@@ -34,6 +35,10 @@ typedef struct {
     float steeringAngle; // in radians
     float steeringSpeed; // in radians per second
     CarPhysicsConfig config;
+    float engineSpeed;
+    float engineSpeed_dot;
+    float throttle; // Throttle position (0.0 to 1.0)
+    float brake;    // Brake position (0.0 to 1.0)
 } Car;
 
 // Define the RAD2DEG macro if it doesn't exist
@@ -56,5 +61,6 @@ void UpdateCarPosition(Car *car, float deltaTime, float beta);
 void ApplyFriction(Car *car, float deltaTime);
 void ReturnSteeringToCenter(Car *car, float deltaTime);
 void NormalizeRotation(Car *car);
+float GetEngineTorque(float throttle, float rpm);
 
 #endif // CAR_H

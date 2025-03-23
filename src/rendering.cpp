@@ -14,4 +14,6 @@ void DrawScene(const Camera *camera, const Model *carModel, const Car *car, cons
     DrawText(TextFormat("Car Rotation: %.2f degrees", car->rotation * RAD2DEG), 10, 40, 20, BLACK);
     DrawText(TextFormat("Steering Angle: %.2f degrees", car->steeringAngle * RAD2DEG), 10, 70, 20, BLACK);
     DrawText(TextFormat("Car Position: (%.2f, %.2f, %.2f)", car->position.x, car->position.y, car->position.z), 10, 100, 20, BLACK);
+    DrawText(TextFormat("Throttle: %.2f", car->throttle), 10, 130, 20, BLACK);
+    DrawText(TextFormat("Brake: %.2f", car->brake), 10, 160, 20, BLACK);
 }

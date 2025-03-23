@@ -16,7 +16,9 @@ Car CreateCar(Vector3 startPosition) {
         2.0f,   // frictionForce
         5.0f,   // accelerationForce
         0.1f,   // minMovementSpeed
-        3       // gearRatio
+        3,      // gearRatio
+        0.35f,  // tireRadius
+        0.5f   // inertiaAtEngine
     };
     
     Car car = {
@@ -27,7 +29,11 @@ Car CreateCar(Vector3 startPosition) {
         0.0f,                     // rotation
         0.0f,                     // steeringAngle
         0.0f,                     // steeringSpeed
-        config                    // physics configuration
+        config,                   // physics configuration
+        0.0f,                     // engineSpeed
+        0.0f,                     // engineSpeed_dot
+        0.0f,                     // throttle
+        0.0f                      // brake
     };
     
     return car;
@@ -40,18 +46,20 @@ void UpdateCar(Car *car, float deltaTime) {
 }
 
 void HandleLongitudinalMovement(Car *car, float deltaTime) {
-    // Accelerate or decelerate the car
+    // Handle throttle and brake input
     if (IsKeyDown(KEY_UP)) {
-        car->speed += car->config.accelerationForce * deltaTime;
-        if (car->speed > car->config.maxSpeed) 
-            car->speed = car->config.maxSpeed;
+        car->throttle += 3.0f * deltaTime;
+        if (car->throttle > 1.0f) car->throttle = 1.0f; 
     } else if (IsKeyDown(KEY_DOWN)) {
-        car->speed -= car->config.accelerationForce * deltaTime;
-        if (car->speed < car->config.minSpeed) 
-            car->speed = car->config.minSpeed;
-    } else {
-        // Apply friction to gradually reduce speed
-        ApplyFriction(car, deltaTime);
+        car->brake += 3.0f * deltaTime;
+        if (car->brake > 1.0f) car->brake = 1.0f;
+    }
+    else {
+        // Gradually reduce throttle and brake when no input
+        car->throttle -= 5.0f * deltaTime;
+        car->brake -= 5.0f * deltaTime;
+        if (car->throttle < 0.0f) car->throttle = 0.0f;
+        if (car->brake < 0.0f) car->brake = 0.0f;
     }
 }
 
