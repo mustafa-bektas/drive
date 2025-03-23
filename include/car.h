@@ -7,9 +7,6 @@ namespace CarGame {
 
 class Car;
 
-/**
- * Car physics configuration class
- */
 class CarPhysicsConfig {
 public:
     // Constructor with sensible defaults
@@ -24,8 +21,6 @@ public:
         float minSpeed = -5.0f,
         float maxSteeringAngle = 0.5f,
         float steeringSpeed = 1.0f,
-        float frictionForce = 2.0f,
-        float accelerationForce = 5.0f,
         float minMovementSpeed = 0.1f,
         int gearRatio = 3,
         float tireRadius = 0.35f,
@@ -41,8 +36,6 @@ public:
     float minSpeed;
     float maxSteeringAngle;
     float steeringSpeed;
-    float frictionForce;
-    float accelerationForce;
     float minMovementSpeed;
     int gearRatio;
     float tireRadius;
@@ -57,19 +50,14 @@ public:
     // Main update method
     void update(float deltaTime);
     
-    // Movement handling
-    void handleLongitudinalMovement(float deltaTime);
-    void handleLateralMovement(float deltaTime);
-    
-    // Helper methods
-    void processSteeringInput(float deltaTime);
-    void calculateSteering(float deltaTime, float& beta);
-    void updatePosition(float deltaTime, float beta);
-    void applyFriction(float deltaTime);
-    void returnSteeringToCenter(float deltaTime);
-    void normalizeRotation();
+    // Physics methods
+    float getTotalResistanceForces(float deltaTime);
+    void updateLongitudinalPhysics(float deltaTime);
+    void updateLateralPhysics(float deltaTime);
     float getEngineTorque(float throttle, float rpm) const;
-
+    void normalizeRotation();
+    float calculateTireForcePacejka(float slipRatio) const;
+    
     // Car state
     Vector3 position;
     Vector3 velocity;
@@ -83,6 +71,10 @@ public:
     float engineSpeed_dot;
     float throttle; // Throttle position (0.0 to 1.0)
     float brake;    // Brake position (0.0 to 1.0)
+    float slipRatio;
+    float longitudinalForce;
+    float dragForce;
+    float rollingResistance;
 };
 
 } // namespace CarGame

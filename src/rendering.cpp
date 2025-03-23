@@ -1,4 +1,5 @@
 #include "../include/rendering.h"
+#include <string>
 
 namespace CarGame {
 
@@ -34,14 +35,74 @@ void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3
                     MAROON);
     EndMode3D();
 
-    // Draw overlay text instructions and car status
-    DrawText(TextFormat("Car Speed: %.2f", car.speed), 10, 10, 20, BLACK);
-    DrawText(TextFormat("Car Rotation: %.2f degrees", car.rotation * RAD2DEG), 10, 40, 20, BLACK);
-    DrawText(TextFormat("Steering Angle: %.2f degrees", car.steeringAngle * RAD2DEG), 10, 70, 20, BLACK);
-    DrawText(TextFormat("Car Position: (%.2f, %.2f, %.2f)", 
-             car.position.x, car.position.y, car.position.z), 10, 100, 20, BLACK);
-    DrawText(TextFormat("Throttle: %.2f", car.throttle), 10, 130, 20, BLACK);
-    DrawText(TextFormat("Brake: %.2f", car.brake), 10, 160, 20, BLACK);
+    // Get screen dimensions
+    int screenWidth = GetScreenWidth();
+    int textX = screenWidth - 300;  // Position text on right side
+    int textY = 20;                 // Start from the top with some margin
+    int lineHeight = 24;            // Space between lines
+    int fontSize = 20;
+    Color textColor = BLACK;
+    
+    // Draw a semi-transparent panel for better readability
+    DrawRectangle(textX - 10, textY - 10, 310, 460, ColorAlpha(LIGHTGRAY, 0.7f));
+    
+    // Display Car Information - Section Title
+    DrawText("CAR TELEMETRY", textX, textY, fontSize, DARKBLUE);
+    textY += lineHeight + 5;
+    
+    // Vehicle Motion
+    DrawText("MOTION", textX, textY, fontSize - 4, DARKGRAY);
+    textY += lineHeight;
+    DrawText(TextFormat("Speed: %.2f km/h", car.speed * 3.6f), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Rotation: %.2f°", car.rotation * RAD2DEG), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Position: (%.1f, %.1f, %.1f)", 
+             car.position.x, car.position.y, car.position.z), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    
+    // Engine Data
+    textY += 5;
+    DrawText("ENGINE", textX, textY, fontSize - 4, DARKGRAY);
+    textY += lineHeight;
+    DrawText(TextFormat("Engine Speed: %.0f RPM", car.engineSpeed), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Engine Torque: %.1f Nm", 
+             car.getEngineTorque(car.throttle, car.engineSpeed)), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    
+    // Controls
+    textY += 5;
+    DrawText("CONTROLS", textX, textY, fontSize - 4, DARKGRAY);
+    textY += lineHeight;
+    DrawText(TextFormat("Throttle: %.2f", car.throttle), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Brake: %.2f", car.brake), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Steering Angle: %.2f°", car.steeringAngle * RAD2DEG), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    
+    // Physics Data
+    textY += 5;
+    DrawText("PHYSICS", textX, textY, fontSize - 4, DARKGRAY);
+    textY += lineHeight;
+    DrawText(TextFormat("Accel X: %.2f m/s²", car.acceleration.x), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Velocity X: %.2f m/s", car.velocity.x), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Velocity Z: %.2f m/s", car.velocity.z), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Slip Ratio: %.3f", car.slipRatio), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Tire Force: %.2f N", car.longitudinalForce), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Drag Force: %.2f N", car.dragForce), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Rolling Resistance: %.2f N", car.rollingResistance), textX, textY, fontSize, textColor);
+    
+    // Draw instructions at the bottom left
+    DrawText("Controls: Arrow Keys - Up (throttle), Down (brake), Left/Right (steering)", 20, GetScreenHeight() - 40, 20, DARKGRAY);
+    DrawText("Press ESC to exit", 20, GetScreenHeight() - 20, 20, DARKGRAY);
 }
 
 } // namespace CarGame

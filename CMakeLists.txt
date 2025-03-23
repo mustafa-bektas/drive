@@ -23,6 +23,7 @@ set(SOURCES
     src/car.cpp
     src/camera.cpp
     src/rendering.cpp
+    src/input_handler.cpp
 )
 
 # Add executable

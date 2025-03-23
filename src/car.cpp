@@ -1,4 +1,5 @@
 #include "../include/car.h"
+#include "car.h"
 
 namespace CarGame {
 
@@ -13,8 +14,6 @@ CarPhysicsConfig::CarPhysicsConfig(
     float minSpeed,
     float maxSteeringAngle,
     float steeringSpeed,
-    float frictionForce,
-    float accelerationForce,
     float minMovementSpeed,
     int gearRatio,
     float tireRadius,
@@ -29,8 +28,6 @@ CarPhysicsConfig::CarPhysicsConfig(
       minSpeed(minSpeed),
       maxSteeringAngle(maxSteeringAngle),
       steeringSpeed(steeringSpeed),
-      frictionForce(frictionForce),
-      accelerationForce(accelerationForce),
       minMovementSpeed(minMovementSpeed),
       gearRatio(gearRatio),
       tireRadius(tireRadius),
@@ -49,108 +46,72 @@ Car::Car(const Vector3& startPosition)
       engineSpeed(0.0f),
       engineSpeed_dot(0.0f),
       throttle(0.0f),
-      brake(0.0f) {
+      brake(0.0f),
+      slipRatio(0.0f),
+      longitudinalForce(0.0f),
+      dragForce(0.0f),
+      rollingResistance(0.0f) {
 }
 
-// Updates the car's speed, rotation, and position based on keyboard input.
+// Updates the car's physics
 void Car::update(float deltaTime) {
-    handleLongitudinalMovement(deltaTime); // Handle acceleration and deceleration
-    handleLateralMovement(deltaTime); // Handle steering and lateral movement
+    updateLongitudinalPhysics(deltaTime);
+    updateLateralPhysics(deltaTime);
 }
 
-void Car::handleLongitudinalMovement(float deltaTime) {
-    // Handle throttle and brake input
-    if (IsKeyDown(KEY_UP)) {
-        throttle += 3.0f * deltaTime;
-        if (throttle > 1.0f) throttle = 1.0f; 
-    } else if (IsKeyDown(KEY_DOWN)) {
-        brake += 3.0f * deltaTime;
-        if (brake > 1.0f) brake = 1.0f;
-    }
-    else {
-        // Gradually reduce throttle and brake when no input
-        throttle -= 5.0f * deltaTime;
-        brake -= 5.0f * deltaTime;
-        if (throttle < 0.0f) throttle = 0.0f;
-        if (brake < 0.0f) brake = 0.0f;
-    }
+void Car::updateLongitudinalPhysics(float deltaTime) {
+    float engineTorque = getEngineTorque(throttle, engineSpeed);
+    float totalLoadTorque = config.gearRatio * config.tireRadius * getTotalResistanceForces(deltaTime);
+    engineSpeed_dot = (engineTorque - totalLoadTorque) / config.inertiaAtEngine;
+    engineSpeed += engineSpeed_dot * deltaTime;
+    if (engineSpeed < 0.0f) engineSpeed = 0.0f; // Prevent negative engine speed
+    if (engineSpeed > 7000.0f) engineSpeed = 7000.0f; // Prevent excessive engine speed
+    float wheelSpeed = engineSpeed / config.gearRatio;
+
+    // calculate longitudinal slip ratio
+    slipRatio = (wheelSpeed * config.tireRadius - speed) / (speed + 0.01f);
+
+    // calculate longitudinal force
+    longitudinalForce = calculateTireForcePacejka(slipRatio);
+
+    // calculate acceleration
+    acceleration.x = longitudinalForce / config.inertiaAtEngine;
+    acceleration.z = 0.0f; // No lateral acceleration in this context
+    acceleration.y = 0.0f; // No vertical acceleration in this context
+
+    // update speed
+    speed += acceleration.x * deltaTime;
+    if (speed < config.minSpeed) speed = config.minSpeed; // Prevent negative speed
 }
 
-float Car::getEngineTorque(float throttle, float rpm) const {
-    return throttle * (-0.0003f * rpm * rpm + 0.1f * rpm + 500.0f);
+float Car::getTotalResistanceForces(float deltaTime) {
+    // calculate aerodynamic drag
+    dragForce = 0.5f * config.width * config.height * 0.3f * speed * speed;
+
+    // calculate rolling resistance
+    rollingResistance = 0.01f * 1000 * 9.81f; // Assuming a constant coefficient of rolling resistance
+    float totalResistance = dragForce + rollingResistance;
+    return totalResistance;
 }
 
-void Car::applyFriction(float deltaTime) {
-    if (speed > 0.0f) {
-        speed -= config.frictionForce * deltaTime;
-        if (speed < 0.0f) speed = 0.0f;
-    } else if (speed < 0.0f) {
-        speed += config.frictionForce * deltaTime;
-        if (speed > 0.0f) speed = 0.0f;
-    }
-}
-
-void Car::handleLateralMovement(float deltaTime) {
+void Car::updateLateralPhysics(float deltaTime) {
+    // Calculate steering effects
     float beta = 0.0f;
     
-    // Only process steering if car is moving fast enough
+    // Only apply steering if car is moving fast enough
     if (std::fabs(speed) > config.minMovementSpeed) {
-        processSteeringInput(deltaTime);
-        calculateSteering(deltaTime, beta);
+        // Calculate slip angle
+        beta = std::atan2f((config.rearAxleDistance) * std::tanf(steeringAngle), 
+                     (config.frontAxleDistance + config.rearAxleDistance));
+
+        // Calculate rotation rate
+        float omega_dot = speed * std::cosf(beta) * std::tanf(steeringAngle) / config.wheelBase;
+        
+        // Update rotation and normalize to 0-2PI range
+        rotation += omega_dot * deltaTime;
+        normalizeRotation();
     }
     
-    updatePosition(deltaTime, beta);
-}
-
-void Car::processSteeringInput(float deltaTime) {
-    if (IsKeyDown(KEY_LEFT)) {
-        steeringSpeed = config.steeringSpeed * deltaTime;
-        steeringAngle += steeringSpeed;
-        if (steeringAngle > config.maxSteeringAngle) 
-            steeringAngle = config.maxSteeringAngle;
-    }
-    else if (IsKeyDown(KEY_RIGHT)) {
-        steeringSpeed = -config.steeringSpeed * deltaTime;
-        steeringAngle += steeringSpeed;
-        if (steeringAngle < -config.maxSteeringAngle) 
-            steeringAngle = -config.maxSteeringAngle;
-    } else {
-        // Gradually reduce steering angle when no input
-        returnSteeringToCenter(deltaTime);
-    }
-}
-
-void Car::returnSteeringToCenter(float deltaTime) {
-    float returnSpeed = config.steeringSpeed * deltaTime;
-    
-    if (steeringAngle > 0.0f) {
-        steeringAngle -= returnSpeed;
-        if (steeringAngle < 0.0f) steeringAngle = 0.0f;
-    } else if (steeringAngle < 0.0f) {
-        steeringAngle += returnSpeed;
-        if (steeringAngle > 0.0f) steeringAngle = 0.0f;
-    }
-}
-
-void Car::calculateSteering(float deltaTime, float& beta) {
-    // Calculate slip angle
-    beta = std::atan2f((config.rearAxleDistance) * std::tanf(steeringAngle), 
-                 (config.frontAxleDistance + config.rearAxleDistance));
-
-    // Calculate rotation rate
-    float omega_dot = speed * std::cosf(beta) * std::tanf(steeringAngle) / config.wheelBase;
-    
-    // Update rotation and normalize to 0-2PI range
-    rotation += omega_dot * deltaTime;
-    normalizeRotation();
-}
-
-void Car::normalizeRotation() {
-    if (rotation > 2 * PI) rotation -= 2 * PI;
-    if (rotation < 0) rotation += 2 * PI;
-}
-
-void Car::updatePosition(float deltaTime, float beta) {
     // Update car's velocity based on speed and rotation
     velocity.z = speed * std::cosf(rotation + beta);
     velocity.x = speed * std::sinf(rotation + beta);
@@ -163,6 +124,28 @@ void Car::updatePosition(float deltaTime, float beta) {
     if (position.y < 0.5f) {
         position.y = 0.5f;
     }
+}
+
+void Car::normalizeRotation() {
+    if (rotation > 2 * PI) rotation -= 2 * PI;
+    if (rotation < 0) rotation += 2 * PI;
+}
+
+float Car::calculateTireForcePacejka(float slipRatio) const
+{
+    float D = 1.0f; // Peak force
+    float C = 1.0f; // Stiffness factor
+    float B = 1.0f; // Shape factor
+    float E = 0.1f; // Curvature factor
+    float Fz = 1.0f; // Normal load
+
+    // Pacejka tire model
+    float force = D * std::sinf(C * std::atanf(B * slipRatio - E * (B * slipRatio - std::atanf(B * slipRatio)))) * Fz;
+    return force;
+}
+
+float Car::getEngineTorque(float throttle, float rpm) const {
+    return throttle * (-0.0003f * rpm * rpm + 0.1f * rpm + 500.0f);
 }
 
 } // namespace CarGame

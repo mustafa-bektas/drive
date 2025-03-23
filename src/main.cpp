@@ -1,6 +1,7 @@
 #include "../include/car.h"
 #include "../include/camera.h"
 #include "../include/rendering.h"
+#include "../include/input_handler.h"
 #include <memory>
 
 using namespace CarGame;
@@ -15,6 +16,7 @@ int main(void) {
     Car car(startPosition);
     GameCamera camera;
     Renderer renderer;
+    InputHandler inputHandler;
     
     renderer.initialize(car);
 
@@ -26,11 +28,14 @@ int main(void) {
     while (!WindowShouldClose()) {
         float deltaTime = GetFrameTime();
 
-        // Update game objects
+        // 1. Process Input
+        inputHandler.processInput(car, deltaTime);
+        
+        // 2. Update Game Logic
         car.update(deltaTime);
         camera.update(car);
 
-        // Draw the scene
+        // 3. Render
         BeginDrawing();
         ClearBackground(RAYWHITE);
         renderer.drawScene(camera, car, floorPosition);
