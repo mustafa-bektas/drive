@@ -16,19 +16,16 @@ int main(void) {
     camera.fovy     = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    // Create a car instance
-    Car car = {
-        { 0.0f, 0.5f, 0.0f },  // position
-        { 0.0f, 0.0f, 0.0f },  // velocity
-        { 0.0f, 0.0f, 0.0f },  // acceleration
-        0.0f,                  // speed
-        0.0f,                  // rotation (radians)
-        0.0f,                  // steeringAngle
-        0.0f                   // steeringSpeed
-    };
+    // Create a car instance using the new creation function
+    Vector3 startPosition = { 0.0f, 0.5f, 0.0f };
+    Car car = CreateCar(startPosition);
 
-    // Create the car model (a simple box)
-    Model carModel = LoadModelFromMesh(GenMeshCube(carWidth, carHeight, carLength));
+    // Create the car model (a simple box) using the car's config properties
+    Model carModel = LoadModelFromMesh(GenMeshCube(
+        car.config.width, 
+        car.config.height, 
+        car.config.length
+    ));
 
     // Floor position (a large plane)
     Vector3 floorPosition = { 0.0f, 0.0f, 0.0f };
