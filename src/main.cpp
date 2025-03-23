@@ -29,6 +29,8 @@ const float steeringSpeedConstant = 1.0f;
 void UpdateCar(Car *car, float deltaTime);
 void UpdateCamera(Camera *camera, const Car *car);
 void DrawScene(const Camera *camera, const Model *carModel, const Car *car, const Vector3 floorPosition);
+void HandleHorizontalMovement(Car *car, float deltaTime);
+void HandleLateralMovement(Car *car, float deltaTime);
 
 int main(void) {
     // Initialization
@@ -69,8 +71,8 @@ int main(void) {
 
         // Draw the scene
         BeginDrawing();
-            ClearBackground(RAYWHITE);
-            DrawScene(&camera, &carModel, &car, floorPosition);
+        ClearBackground(RAYWHITE);
+        DrawScene(&camera, &carModel, &car, floorPosition);
         EndDrawing();
     }
 
@@ -83,6 +85,12 @@ int main(void) {
 
 // Updates the car's speed, rotation, and position based on keyboard input.
 void UpdateCar(Car *car, float deltaTime) {
+    
+    HandleHorizontalMovement(car, deltaTime); // Handle acceleration and deceleration
+    HandleLateralMovement(car, deltaTime); // Handle steering and lateral movement
+}
+
+void HandleHorizontalMovement(Car *car, float deltaTime) {
     // Accelerate or decelerate the car
     if (IsKeyDown(KEY_UP)) {
         car->speed += 5.0f * deltaTime;
@@ -100,7 +108,9 @@ void UpdateCar(Car *car, float deltaTime) {
             if (car->speed > 0.0f) car->speed = 0.0f;
         }
     }
+}
 
+void HandleLateralMovement(Car *car, float deltaTime) {
     // Steering: only allow steering when the car is moving
     if (fabs(car->speed) > 0.1f) {
         if (IsKeyDown(KEY_LEFT)) {
