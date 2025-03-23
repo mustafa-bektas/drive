@@ -11,20 +11,20 @@ class CarPhysicsConfig {
 public:
     // Constructor with sensible defaults
     CarPhysicsConfig(
-        float width = 2.0f,
-        float length = 4.0f,
-        float height = 1.0f,
+        float width = 1.8f,
+        float length = 4.5f,
+        float height = 1.5f,
         float wheelBase = 2.8f,
         float frontAxleDistance = 1.6f,
         float rearAxleDistance = 1.2f,
-        float maxSpeed = 10.0f,
-        float minSpeed = -5.0f,
-        float maxSteeringAngle = 0.5f,
-        float steeringSpeed = 1.0f,
-        float minMovementSpeed = 0.1f,
-        int gearRatio = 3,
-        float tireRadius = 0.35f,
-        float inertiaAtEngine = 0.5f);
+        float minSpeed = -1.0f,
+        float maxSteeringAngle = 0.6f,
+        float steeringSpeed = 2.0f,
+        float minMovementSpeed = 0.5f,
+        int gearRatio = 7,
+        float tireRadius = 0.33f,
+        float inertiaAtEngine = 10.0f,
+        int mass = 1000);
 
     float width;
     float length;
@@ -32,7 +32,6 @@ public:
     float wheelBase;
     float frontAxleDistance;
     float rearAxleDistance;
-    float maxSpeed;
     float minSpeed;
     float maxSteeringAngle;
     float steeringSpeed;
@@ -40,6 +39,7 @@ public:
     int gearRatio;
     float tireRadius;
     float inertiaAtEngine;
+    int mass;
 };
 
 
@@ -57,6 +57,7 @@ public:
     float getEngineTorque(float throttle, float rpm) const;
     void normalizeRotation();
     float calculateTireForcePacejka(float slipRatio) const;
+    float calculateSlipRatio(float wheelSpeed, float carSpeed) const;
     
     // Car state
     Vector3 position;
