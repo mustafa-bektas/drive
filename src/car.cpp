@@ -15,7 +15,8 @@ Car CreateCar(Vector3 startPosition) {
         1.0f,   // steeringSpeed
         2.0f,   // frictionForce
         5.0f,   // accelerationForce
-        0.1f    // minMovementSpeed
+        0.1f,   // minMovementSpeed
+        3       // gearRatio
     };
     
     Car car = {
@@ -52,6 +53,11 @@ void HandleLongitudinalMovement(Car *car, float deltaTime) {
         // Apply friction to gradually reduce speed
         ApplyFriction(car, deltaTime);
     }
+}
+
+float GetEngineTorque(float throttle, float rpm)
+{
+    return throttle * (-0.0003f * rpm * rpm + 0.1f * rpm + 500.0f);
 }
 
 void ApplyFriction(Car *car, float deltaTime) {

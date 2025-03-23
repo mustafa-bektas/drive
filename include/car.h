@@ -20,6 +20,8 @@ typedef struct {
     float frictionForce;
     float accelerationForce;
     float minMovementSpeed;  // Minimum speed for steering to work
+    int gearRatio;
+    float tireRadius;
 } CarPhysicsConfig;
 
 // Car structure
