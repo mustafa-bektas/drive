@@ -1,154 +1,168 @@
 #include "../include/car.h"
 
-// Create car with default physics configuration
-Car CreateCar(Vector3 startPosition) {
-    CarPhysicsConfig config = {
-        2.0f,   // width
-        4.0f,   // length
-        1.0f,   // height
-        2.8f,   // wheelBase
-        1.6f,   // frontAxleDistance
-        1.2f,   // rearAxleDistance
-        10.0f,  // maxSpeed
-        -5.0f,  // minSpeed
-        0.5f,   // maxSteeringAngle
-        1.0f,   // steeringSpeed
-        2.0f,   // frictionForce
-        5.0f,   // accelerationForce
-        0.1f,   // minMovementSpeed
-        3,      // gearRatio
-        0.35f,  // tireRadius
-        0.5f   // inertiaAtEngine
-    };
-    
-    Car car = {
-        startPosition,            // position
-        {0.0f, 0.0f, 0.0f},       // velocity
-        {0.0f, 0.0f, 0.0f},       // acceleration
-        0.0f,                     // speed
-        0.0f,                     // rotation
-        0.0f,                     // steeringAngle
-        0.0f,                     // steeringSpeed
-        config,                   // physics configuration
-        0.0f,                     // engineSpeed
-        0.0f,                     // engineSpeed_dot
-        0.0f,                     // throttle
-        0.0f                      // brake
-    };
-    
-    return car;
+namespace CarGame {
+
+CarPhysicsConfig::CarPhysicsConfig(
+    float width,
+    float length,
+    float height,
+    float wheelBase,
+    float frontAxleDistance,
+    float rearAxleDistance,
+    float maxSpeed,
+    float minSpeed,
+    float maxSteeringAngle,
+    float steeringSpeed,
+    float frictionForce,
+    float accelerationForce,
+    float minMovementSpeed,
+    int gearRatio,
+    float tireRadius,
+    float inertiaAtEngine)
+    : width(width), 
+      length(length), 
+      height(height),
+      wheelBase(wheelBase),
+      frontAxleDistance(frontAxleDistance),
+      rearAxleDistance(rearAxleDistance),
+      maxSpeed(maxSpeed),
+      minSpeed(minSpeed),
+      maxSteeringAngle(maxSteeringAngle),
+      steeringSpeed(steeringSpeed),
+      frictionForce(frictionForce),
+      accelerationForce(accelerationForce),
+      minMovementSpeed(minMovementSpeed),
+      gearRatio(gearRatio),
+      tireRadius(tireRadius),
+      inertiaAtEngine(inertiaAtEngine) {
+}
+
+Car::Car(const Vector3& startPosition) 
+    : position(startPosition),
+      velocity({0.0f, 0.0f, 0.0f}),
+      acceleration({0.0f, 0.0f, 0.0f}),
+      speed(0.0f),
+      rotation(0.0f),
+      steeringAngle(0.0f),
+      steeringSpeed(0.0f),
+      config(),
+      engineSpeed(0.0f),
+      engineSpeed_dot(0.0f),
+      throttle(0.0f),
+      brake(0.0f) {
 }
 
 // Updates the car's speed, rotation, and position based on keyboard input.
-void UpdateCar(Car *car, float deltaTime) {
-    HandleLongitudinalMovement(car, deltaTime); // Handle acceleration and deceleration
-    HandleLateralMovement(car, deltaTime); // Handle steering and lateral movement
+void Car::update(float deltaTime) {
+    handleLongitudinalMovement(deltaTime); // Handle acceleration and deceleration
+    handleLateralMovement(deltaTime); // Handle steering and lateral movement
 }
 
-void HandleLongitudinalMovement(Car *car, float deltaTime) {
+void Car::handleLongitudinalMovement(float deltaTime) {
     // Handle throttle and brake input
     if (IsKeyDown(KEY_UP)) {
-        car->throttle += 3.0f * deltaTime;
-        if (car->throttle > 1.0f) car->throttle = 1.0f; 
+        throttle += 3.0f * deltaTime;
+        if (throttle > 1.0f) throttle = 1.0f; 
     } else if (IsKeyDown(KEY_DOWN)) {
-        car->brake += 3.0f * deltaTime;
-        if (car->brake > 1.0f) car->brake = 1.0f;
+        brake += 3.0f * deltaTime;
+        if (brake > 1.0f) brake = 1.0f;
     }
     else {
         // Gradually reduce throttle and brake when no input
-        car->throttle -= 5.0f * deltaTime;
-        car->brake -= 5.0f * deltaTime;
-        if (car->throttle < 0.0f) car->throttle = 0.0f;
-        if (car->brake < 0.0f) car->brake = 0.0f;
+        throttle -= 5.0f * deltaTime;
+        brake -= 5.0f * deltaTime;
+        if (throttle < 0.0f) throttle = 0.0f;
+        if (brake < 0.0f) brake = 0.0f;
     }
 }
 
-float GetEngineTorque(float throttle, float rpm)
-{
+float Car::getEngineTorque(float throttle, float rpm) const {
     return throttle * (-0.0003f * rpm * rpm + 0.1f * rpm + 500.0f);
 }
 
-void ApplyFriction(Car *car, float deltaTime) {
-    if (car->speed > 0.0f) {
-        car->speed -= car->config.frictionForce * deltaTime;
-        if (car->speed < 0.0f) car->speed = 0.0f;
-    } else if (car->speed < 0.0f) {
-        car->speed += car->config.frictionForce * deltaTime;
-        if (car->speed > 0.0f) car->speed = 0.0f;
+void Car::applyFriction(float deltaTime) {
+    if (speed > 0.0f) {
+        speed -= config.getFrictionForce() * deltaTime;
+        if (speed < 0.0f) speed = 0.0f;
+    } else if (speed < 0.0f) {
+        speed += config.getFrictionForce() * deltaTime;
+        if (speed > 0.0f) speed = 0.0f;
     }
 }
 
-void HandleLateralMovement(Car *car, float deltaTime) {
+void Car::handleLateralMovement(float deltaTime) {
     float beta = 0.0f;
     
     // Only process steering if car is moving fast enough
-    if (fabs(car->speed) > car->config.minMovementSpeed) {
-        ProcessSteeringInput(car, deltaTime);
-        CalculateSteering(car, deltaTime, &beta);
+    if (std::fabs(speed) > config.getMinMovementSpeed()) {
+        processSteeringInput(deltaTime);
+        calculateSteering(deltaTime, beta);
     }
     
-    UpdateCarPosition(car, deltaTime, beta);
+    updatePosition(deltaTime, beta);
 }
 
-void ProcessSteeringInput(Car *car, float deltaTime) {
+void Car::processSteeringInput(float deltaTime) {
     if (IsKeyDown(KEY_LEFT)) {
-        car->steeringSpeed = car->config.steeringSpeed * deltaTime;
-        car->steeringAngle += car->steeringSpeed;
-        if (car->steeringAngle > car->config.maxSteeringAngle) 
-            car->steeringAngle = car->config.maxSteeringAngle;
+        steeringSpeed = config.getSteeringSpeed() * deltaTime;
+        steeringAngle += steeringSpeed;
+        if (steeringAngle > config.getMaxSteeringAngle()) 
+            steeringAngle = config.getMaxSteeringAngle();
     }
     else if (IsKeyDown(KEY_RIGHT)) {
-        car->steeringSpeed = -car->config.steeringSpeed * deltaTime;
-        car->steeringAngle += car->steeringSpeed;
-        if (car->steeringAngle < -car->config.maxSteeringAngle) 
-            car->steeringAngle = -car->config.maxSteeringAngle;
+        steeringSpeed = -config.getSteeringSpeed() * deltaTime;
+        steeringAngle += steeringSpeed;
+        if (steeringAngle < -config.getMaxSteeringAngle()) 
+            steeringAngle = -config.getMaxSteeringAngle();
     } else {
         // Gradually reduce steering angle when no input
-        ReturnSteeringToCenter(car, deltaTime);
+        returnSteeringToCenter(deltaTime);
     }
 }
 
-void ReturnSteeringToCenter(Car *car, float deltaTime) {
-    float returnSpeed = car->config.steeringSpeed * deltaTime;
+void Car::returnSteeringToCenter(float deltaTime) {
+    float returnSpeed = config.getSteeringSpeed() * deltaTime;
     
-    if (car->steeringAngle > 0.0f) {
-        car->steeringAngle -= returnSpeed;
-        if (car->steeringAngle < 0.0f) car->steeringAngle = 0.0f;
-    } else if (car->steeringAngle < 0.0f) {
-        car->steeringAngle += returnSpeed;
-        if (car->steeringAngle > 0.0f) car->steeringAngle = 0.0f;
+    if (steeringAngle > 0.0f) {
+        steeringAngle -= returnSpeed;
+        if (steeringAngle < 0.0f) steeringAngle = 0.0f;
+    } else if (steeringAngle < 0.0f) {
+        steeringAngle += returnSpeed;
+        if (steeringAngle > 0.0f) steeringAngle = 0.0f;
     }
 }
 
-void CalculateSteering(Car *car, float deltaTime, float *beta) {
+void Car::calculateSteering(float deltaTime, float& beta) {
     // Calculate slip angle
-    *beta = atan2f((car->config.rearAxleDistance) * tanf(car->steeringAngle), 
-                  (car->config.frontAxleDistance + car->config.rearAxleDistance));
+    beta = std::atan2f((config.getRearAxleDistance()) * std::tanf(steeringAngle), 
+                 (config.getFrontAxleDistance() + config.getRearAxleDistance()));
 
     // Calculate rotation rate
-    float omega_dot = car->speed * cosf(*beta) * tanf(car->steeringAngle) / car->config.wheelBase;
+    float omega_dot = speed * std::cosf(beta) * std::tanf(steeringAngle) / config.getWheelBase();
     
     // Update rotation and normalize to 0-2PI range
-    car->rotation += omega_dot * deltaTime;
-    NormalizeRotation(car);
+    rotation += omega_dot * deltaTime;
+    normalizeRotation();
 }
 
-void NormalizeRotation(Car *car) {
-    if (car->rotation > 2 * PI) car->rotation -= 2 * PI;
-    if (car->rotation < 0) car->rotation += 2 * PI;
+void Car::normalizeRotation() {
+    if (rotation > 2 * PI) rotation -= 2 * PI;
+    if (rotation < 0) rotation += 2 * PI;
 }
 
-void UpdateCarPosition(Car *car, float deltaTime, float beta) {
+void Car::updatePosition(float deltaTime, float beta) {
     // Update car's velocity based on speed and rotation
-    car->velocity.z = car->speed * cosf(car->rotation + beta);
-    car->velocity.x = car->speed * sinf(car->rotation + beta);
+    velocity.z = speed * std::cosf(rotation + beta);
+    velocity.x = speed * std::sinf(rotation + beta);
 
     // Update car's position based on velocity
-    car->position.x += car->velocity.x * deltaTime;
-    car->position.z += car->velocity.z * deltaTime;
+    position.x += velocity.x * deltaTime;
+    position.z += velocity.z * deltaTime;
 
     // Keep the car above the ground
-    if (car->position.y < 0.5f) {
-        car->position.y = 0.5f;
+    if (position.y < 0.5f) {
+        position.y = 0.5f;
     }
 }
+
+} // namespace CarGame

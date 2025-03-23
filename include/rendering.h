@@ -1,10 +1,26 @@
-#ifndef RENDERING_H
-#define RENDERING_H
+#pragma once
 
 #include "raylib.h"
 #include "car.h"
+#include "camera.h"
 
-// Function prototypes
-void DrawScene(const Camera *camera, const Model *carModel, const Car *car, const Vector3 floorPosition);
+namespace CarGame {
 
-#endif // RENDERING_H
+/**
+ * Renderer class to handle all rendering operations
+ */
+class Renderer {
+public:
+    Renderer();
+    ~Renderer();
+    
+    void initialize(const Car& car);
+    
+    // Draw the 3D scene and UI
+    void drawScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition);
+    
+private:
+    Model carModel;
+};
+
+} // namespace CarGame
