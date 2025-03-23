@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Raylib package (may need to be installed on the system)
 find_package(raylib QUIET)
-
 if (NOT raylib_FOUND)
     include(FetchContent)
     FetchContent_Declare(
@@ -18,8 +17,19 @@ if (NOT raylib_FOUND)
     FetchContent_MakeAvailable(raylib)
 endif()
 
+# Add all source files
+set(SOURCES
+    src/main.cpp
+    src/car.cpp
+    src/camera.cpp
+    src/rendering.cpp
+)
+
 # Add executable
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+# Include directories
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Link against Raylib
 target_link_libraries(${PROJECT_NAME} raylib)
