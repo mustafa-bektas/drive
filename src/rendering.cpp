@@ -14,33 +14,34 @@ Renderer::~Renderer() {
 void Renderer::initialize(const Car& car) {
     // Create the car model (a simple box) using the car's config properties
     carModel = LoadModelFromMesh(GenMeshCube(
-        car.getConfig().getWidth(), 
-        car.getConfig().getHeight(), 
-        car.getConfig().getLength()
+        car.config.width, 
+        car.config.height, 
+        car.config.length
     ));
 }
 
+// Draws the 3D scene, including the floor and the car, and overlays UI text
 void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition) {
     BeginMode3D(camera.getCamera());
         // Draw the ground plane
         DrawPlane(floorPosition, Vector2{50.0f, 50.0f}, LIGHTGRAY);
         
         // Draw the car model with the correct rotation (converted from radians to degrees)
-        DrawModelEx(carModel, car.getPosition(), 
+        DrawModelEx(carModel, car.position, 
                     Vector3{0.0f, 1.0f, 0.0f}, 
-                    car.getRotation() * RAD2DEG, 
+                    car.rotation * RAD2DEG, 
                     Vector3{1.0f, 1.0f, 1.0f}, 
                     MAROON);
     EndMode3D();
 
     // Draw overlay text instructions and car status
-    DrawText(TextFormat("Car Speed: %.2f", car.getSpeed()), 10, 10, 20, BLACK);
-    DrawText(TextFormat("Car Rotation: %.2f degrees", car.getRotation() * RAD2DEG), 10, 40, 20, BLACK);
-    DrawText(TextFormat("Steering Angle: %.2f degrees", car.getSteeringAngle() * RAD2DEG), 10, 70, 20, BLACK);
+    DrawText(TextFormat("Car Speed: %.2f", car.speed), 10, 10, 20, BLACK);
+    DrawText(TextFormat("Car Rotation: %.2f degrees", car.rotation * RAD2DEG), 10, 40, 20, BLACK);
+    DrawText(TextFormat("Steering Angle: %.2f degrees", car.steeringAngle * RAD2DEG), 10, 70, 20, BLACK);
     DrawText(TextFormat("Car Position: (%.2f, %.2f, %.2f)", 
-             car.getPosition().x, car.getPosition().y, car.getPosition().z), 10, 100, 20, BLACK);
-    DrawText(TextFormat("Throttle: %.2f", car.getThrottle()), 10, 130, 20, BLACK);
-    DrawText(TextFormat("Brake: %.2f", car.getBrake()), 10, 160, 20, BLACK);
+             car.position.x, car.position.y, car.position.z), 10, 100, 20, BLACK);
+    DrawText(TextFormat("Throttle: %.2f", car.throttle), 10, 130, 20, BLACK);
+    DrawText(TextFormat("Brake: %.2f", car.brake), 10, 160, 20, BLACK);
 }
 
 } // namespace CarGame

@@ -12,6 +12,7 @@ class Car;
  */
 class CarPhysicsConfig {
 public:
+    // Constructor with sensible defaults
     CarPhysicsConfig(
         float width = 2.0f,
         float length = 4.0f,
@@ -30,24 +31,6 @@ public:
         float tireRadius = 0.35f,
         float inertiaAtEngine = 0.5f);
 
-    float getWidth() const { return width; }
-    float getLength() const { return length; }
-    float getHeight() const { return height; }
-    float getWheelBase() const { return wheelBase; }
-    float getFrontAxleDistance() const { return frontAxleDistance; }
-    float getRearAxleDistance() const { return rearAxleDistance; }
-    float getMaxSpeed() const { return maxSpeed; }
-    float getMinSpeed() const { return minSpeed; }
-    float getMaxSteeringAngle() const { return maxSteeringAngle; }
-    float getSteeringSpeed() const { return steeringSpeed; }
-    float getFrictionForce() const { return frictionForce; }
-    float getAccelerationForce() const { return accelerationForce; }
-    float getMinMovementSpeed() const { return minMovementSpeed; }
-    int getGearRatio() const { return gearRatio; }
-    float getTireRadius() const { return tireRadius; }
-    float getInertiaAtEngine() const { return inertiaAtEngine; }
-
-private:
     float width;
     float length;
     float height;
@@ -66,24 +49,14 @@ private:
     float inertiaAtEngine;
 };
 
+
 class Car {
 public:
-    // Constructor
     explicit Car(const Vector3& startPosition);
 
+    // Main update method
     void update(float deltaTime);
     
-    const Vector3& getPosition() const { return position; }
-    const Vector3& getVelocity() const { return velocity; }
-    const Vector3& getAcceleration() const { return acceleration; }
-    float getSpeed() const { return speed; }
-    float getRotation() const { return rotation; }
-    float getSteeringAngle() const { return steeringAngle; }
-    float getThrottle() const { return throttle; }
-    float getBrake() const { return brake; }
-    const CarPhysicsConfig& getConfig() const { return config; }
-
-private:
     // Movement handling
     void handleLongitudinalMovement(float deltaTime);
     void handleLateralMovement(float deltaTime);

@@ -45,7 +45,7 @@ Car::Car(const Vector3& startPosition)
       rotation(0.0f),
       steeringAngle(0.0f),
       steeringSpeed(0.0f),
-      config(),
+      config(),  // Uses default values from constructor
       engineSpeed(0.0f),
       engineSpeed_dot(0.0f),
       throttle(0.0f),
@@ -82,10 +82,10 @@ float Car::getEngineTorque(float throttle, float rpm) const {
 
 void Car::applyFriction(float deltaTime) {
     if (speed > 0.0f) {
-        speed -= config.getFrictionForce() * deltaTime;
+        speed -= config.frictionForce * deltaTime;
         if (speed < 0.0f) speed = 0.0f;
     } else if (speed < 0.0f) {
-        speed += config.getFrictionForce() * deltaTime;
+        speed += config.frictionForce * deltaTime;
         if (speed > 0.0f) speed = 0.0f;
     }
 }
@@ -94,7 +94,7 @@ void Car::handleLateralMovement(float deltaTime) {
     float beta = 0.0f;
     
     // Only process steering if car is moving fast enough
-    if (std::fabs(speed) > config.getMinMovementSpeed()) {
+    if (std::fabs(speed) > config.minMovementSpeed) {
         processSteeringInput(deltaTime);
         calculateSteering(deltaTime, beta);
     }
@@ -104,16 +104,16 @@ void Car::handleLateralMovement(float deltaTime) {
 
 void Car::processSteeringInput(float deltaTime) {
     if (IsKeyDown(KEY_LEFT)) {
-        steeringSpeed = config.getSteeringSpeed() * deltaTime;
+        steeringSpeed = config.steeringSpeed * deltaTime;
         steeringAngle += steeringSpeed;
-        if (steeringAngle > config.getMaxSteeringAngle()) 
-            steeringAngle = config.getMaxSteeringAngle();
+        if (steeringAngle > config.maxSteeringAngle) 
+            steeringAngle = config.maxSteeringAngle;
     }
     else if (IsKeyDown(KEY_RIGHT)) {
-        steeringSpeed = -config.getSteeringSpeed() * deltaTime;
+        steeringSpeed = -config.steeringSpeed * deltaTime;
         steeringAngle += steeringSpeed;
-        if (steeringAngle < -config.getMaxSteeringAngle()) 
-            steeringAngle = -config.getMaxSteeringAngle();
+        if (steeringAngle < -config.maxSteeringAngle) 
+            steeringAngle = -config.maxSteeringAngle;
     } else {
         // Gradually reduce steering angle when no input
         returnSteeringToCenter(deltaTime);
@@ -121,7 +121,7 @@ void Car::processSteeringInput(float deltaTime) {
 }
 
 void Car::returnSteeringToCenter(float deltaTime) {
-    float returnSpeed = config.getSteeringSpeed() * deltaTime;
+    float returnSpeed = config.steeringSpeed * deltaTime;
     
     if (steeringAngle > 0.0f) {
         steeringAngle -= returnSpeed;
@@ -134,11 +134,11 @@ void Car::returnSteeringToCenter(float deltaTime) {
 
 void Car::calculateSteering(float deltaTime, float& beta) {
     // Calculate slip angle
-    beta = std::atan2f((config.getRearAxleDistance()) * std::tanf(steeringAngle), 
-                 (config.getFrontAxleDistance() + config.getRearAxleDistance()));
+    beta = std::atan2f((config.rearAxleDistance) * std::tanf(steeringAngle), 
+                 (config.frontAxleDistance + config.rearAxleDistance));
 
     // Calculate rotation rate
-    float omega_dot = speed * std::cosf(beta) * std::tanf(steeringAngle) / config.getWheelBase();
+    float omega_dot = speed * std::cosf(beta) * std::tanf(steeringAngle) / config.wheelBase;
     
     // Update rotation and normalize to 0-2PI range
     rotation += omega_dot * deltaTime;

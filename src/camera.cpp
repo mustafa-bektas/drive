@@ -14,11 +14,11 @@ GameCamera::GameCamera() {
 
 // Updates the camera to follow the car
 void GameCamera::update(const Car& car) {
-    camera.target = car.getPosition();
+    camera.target = car.position;
     float cameraDistance = 15.0f;
-    camera.position.x = car.getPosition().x - cameraDistance * std::sinf(car.getRotation());
-    camera.position.z = car.getPosition().z - cameraDistance * std::cosf(car.getRotation());
-    camera.position.y = car.getPosition().y + 7.0f;
+    camera.position.x = car.position.x - cameraDistance * std::sinf(car.rotation);
+    camera.position.z = car.position.z - cameraDistance * std::cosf(car.rotation);
+    camera.position.y = car.position.y + 7.0f;
 }
 
 } // namespace CarGame
