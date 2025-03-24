@@ -24,7 +24,10 @@ public:
         int gearRatio = 7,
         float tireRadius = 0.33f,
         float inertiaAtEngine = 0.45f,
-        int mass = 1600);
+        int mass = 1600,
+        float corneringStiffnessFront = 50000.0f,
+        float corneringStiffnessRear = 40000.0f
+    );
 
     float width;
     float length;
@@ -40,6 +43,8 @@ public:
     float tireRadius;
     float inertiaAtEngine;
     int mass;
+    float corneringStiffnessFront; // Cornering stiffness for front tires
+    float corneringStiffnessRear;  // Cornering stiffness for rear tires
 };
 
 
@@ -58,6 +63,7 @@ public:
     void normalizeRotation();
     float calculateTireForcePacejka(float slipRatio) const;
     float calculateSlipRatio(float wheelLinearSpeed, float vehicleSpeed) const;
+    float calculateTireForcePacejkaLateral(float slipAngle) const;
 
     // Car state
     Vector3 position;
@@ -79,6 +85,20 @@ public:
     float wheelRotationSpeed; // in radians per second
     bool clutch;
     float netForce;
+
+    // Lateral Dynamics
+    float slipAngleFront;  // Slip angle of front tires
+    float slipAngleRear;   // Slip angle of rear tires
+    float lateralForceFront; // Lateral force on front tires
+    float lateralForceRear;  // Lateral force on rear tires
+    float yawMoment;       // Yaw moment around center of gravity
+    float yawRate;         // Yaw rate (angular velocity)
+    float lateralVelocity; // Lateral velocity in car's reference frame
+    float sideSlipAngle;
+    float sideSlipAngleDot;
+    float yawAngle;
+    float yawAngleDot;
+    float yawAngleDotDot;
 };
 
 } // namespace CarGame

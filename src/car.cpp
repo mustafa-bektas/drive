@@ -19,7 +19,10 @@ CarPhysicsConfig::CarPhysicsConfig(
     int gearRatio,
     float tireRadius,
     float inertiaAtEngine,
-    int mass)
+    int mass,
+    float corneringStiffnessFront,
+    float corneringStiffnessRear
+)
     : width(width), 
       length(length), 
       height(height),
@@ -33,7 +36,9 @@ CarPhysicsConfig::CarPhysicsConfig(
       gearRatio(gearRatio),
       tireRadius(tireRadius),
       inertiaAtEngine(inertiaAtEngine),
-      mass(mass) {
+      mass(mass),
+      corneringStiffnessFront(corneringStiffnessFront),
+      corneringStiffnessRear(corneringStiffnessRear) {
 }
 
 Car::Car(const Vector3& startPosition) 
@@ -55,7 +60,19 @@ Car::Car(const Vector3& startPosition)
       rollingResistance(0.0f),
       wheelRotationSpeed(0.0f),
       clutch(false),
-      netForce(0.0f) {
+      netForce(0.0f),
+      slipAngleFront(0.0f),
+      slipAngleRear(0.0f),
+      lateralForceFront(0.0f),
+      lateralForceRear(0.0f),
+      yawMoment(0.0f),
+      yawRate(0.0f),
+      lateralVelocity(0.0f),
+      sideSlipAngle(0.0f),
+      sideSlipAngleDot(0.0f),
+      yawAngle(0.0f),
+      yawAngleDot(0.0f),
+      yawAngleDotDot(0.0f) {
 }
 
 // Updates the car's physics
@@ -88,59 +105,62 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
         engineSpeed = std::max(idleRPM, wheelRPM);
     }
     
-    // Limit engine speed
-    if (engineSpeed > 8000.0f) engineSpeed = 8000.0f;
-    
-    // Calculate engine torque based on updated engine speed
-    float engineTorque = getEngineTorque(throttle, engineSpeed);
-    
-    if (throttle < 0.1f && engineSpeed > 1000.0f) {
-        engineTorque -= (engineSpeed / 8000.0f) * 75.0f; // Engine braking increases with RPM
-    }
-
-    wheelRotationSpeed = clutch ? wheelRotationSpeed : engineSpeed / config.gearRatio * (2.0f * PI / 60.0f);
-
-    float brakeTorque = 0.0f;
-    if (brake > 0.0f) {
-        // Up to 5000 N·m braking torque
-        brakeTorque = brake * 8000.0f; 
+    if (!clutch)
+    {
+        // Limit engine speed
+        if (engineSpeed > 8000.0f) engineSpeed = 8000.0f;
         
-        // Brakes always act to slow rotation toward zero
-        if (wheelRotationSpeed > 0.0f) {
-            brakeTorque = -brakeTorque;
-        } else if (wheelRotationSpeed < 0.0f) {
-            // Already correct direction
-        } else {
-            // When wheels aren't rotating
-            brakeTorque = 0.0f;
+        // Calculate engine torque based on updated engine speed
+        float engineTorque = getEngineTorque(throttle, engineSpeed);
+        
+        if (throttle < 0.1f && engineSpeed > 1000.0f) {
+            engineTorque -= (engineSpeed / 8000.0f) * 75.0f; // Engine braking increases with RPM
         }
+
+        wheelRotationSpeed = clutch ? wheelRotationSpeed : engineSpeed / config.gearRatio * (2.0f * PI / 60.0f);
+
+        float brakeTorque = 0.0f;
+        if (brake > 0.0f) {
+            // Up to 5000 N·m braking torque
+            brakeTorque = brake * 8000.0f; 
+            
+            // Brakes always act to slow rotation toward zero
+            if (wheelRotationSpeed > 0.0f) {
+                brakeTorque = -brakeTorque;
+            } else if (wheelRotationSpeed < 0.0f) {
+                // Already correct direction
+            } else {
+                // When wheels aren't rotating
+                brakeTorque = 0.0f;
+            }
+        }
+
+        float wheelInertia = 5.0f;  // kg·m²
+        float wheelAngularAccel = (engineTorque + brakeTorque) / wheelInertia;
+        
+        // STEP 7: Update wheel rotation speed based on torques
+        wheelRotationSpeed += wheelAngularAccel * deltaTime;
+        
+        // STEP 8: Calculate tire slip using actual wheel rotation
+        float wheelLinearSpeed = wheelRotationSpeed * config.tireRadius;
+
+        slipRatio = calculateSlipRatio(wheelLinearSpeed, speed);    
+        
+        // Longitudinal force is limited by tire grip (Pacejka model)
+        longitudinalForce = 2 * calculateTireForcePacejka(slipRatio); // For 2 drive wheels
+        
+        // Calculate total resistance
+        float totalResistance = getTotalResistanceForces(deltaTime);
+        
+        // Net force on the vehicle
+        netForce = longitudinalForce - totalResistance;
+
+        // Calculate acceleration (F = ma)
+        acceleration.x = netForce / config.mass;
+        
+        // Update speed
+        speed += acceleration.x * deltaTime;
     }
-
-    float wheelInertia = 5.0f;  // kg·m²
-    float wheelAngularAccel = (engineTorque + brakeTorque) / wheelInertia;
-    
-    // STEP 7: Update wheel rotation speed based on torques
-    wheelRotationSpeed += wheelAngularAccel * deltaTime;
-    
-    // STEP 8: Calculate tire slip using actual wheel rotation
-    float wheelLinearSpeed = wheelRotationSpeed * config.tireRadius;
-
-    slipRatio = calculateSlipRatio(wheelLinearSpeed, speed);    
-    
-    // Longitudinal force is limited by tire grip (Pacejka model)
-    longitudinalForce = 2 * calculateTireForcePacejka(slipRatio); // For 2 drive wheels
-    
-    // Calculate total resistance
-    float totalResistance = getTotalResistanceForces(deltaTime);
-    
-    // Net force on the vehicle
-    netForce = longitudinalForce - totalResistance;
-
-    // Calculate acceleration (F = ma)
-    acceleration.x = netForce / config.mass;
-    
-    // Update speed
-    speed += acceleration.x * deltaTime;
 }
 
 float Car::getTotalResistanceForces(float deltaTime) {
@@ -213,7 +233,7 @@ float Car::getEngineTorque(float throttle, float rpm) const {
     return throttle * (400.0f + 250.0f * (rpm / 4000.0f) * (1.0f - rpm / 8000.0f));
 }
 
-void Car::updateLateralPhysics(float deltaTime) {
+/* void Car::updateLateralPhysics(float deltaTime) {
     // Calculate steering effects
     float beta = 0.0f;
     
@@ -243,10 +263,107 @@ void Car::updateLateralPhysics(float deltaTime) {
     if (position.y < 0.5f) {
         position.y = 0.5f;
     }
-}
+} */
 
 void Car::normalizeRotation() {
     if (rotation > 2 * PI) rotation -= 2 * PI;
     if (rotation < 0) rotation += 2 * PI;
+}
+
+/* float Car::calculateTireForcePacejkaLateral(float slipAngle) const {
+    // Pacejka parameters for lateral force
+    float D = 1.0f;     // Peak coefficient (dimensionless)
+    float C = 1.5f;     // Shape factor
+    float B = 10.0f;    // Stiffness factor
+    float E = -0.97f;    // Curvature factor (negative for lateral forces)
+    float Fz = 4000.0f; // Normal load per tire (N)    
+
+    // Calculate coefficient from Magic Formula
+    float coefficient = D * std::sinf(C * std::atanf(B * slipAngle - E * (B * slipAngle - std::atanf(B * slipAngle))));
+    
+    // Apply coefficient to normal load
+    return coefficient * Fz;
+} */
+
+void Car::updateLateralPhysics(float deltaTime) {
+    float yawInertia = (float)config.mass * (std::pow(config.wheelBase, 2) + std::pow(config.width, 2)) / 12.0f;
+    
+    // Minimum speed threshold to avoid division by zero
+    const float MIN_SPEED = 2.0f; // m/s
+    
+    if (std::fabs(speed) < MIN_SPEED) {
+        sideSlipAngle *= 0.8f;
+        yawAngleDot *= 0.8f;
+        
+        if (std::fabs(steeringAngle) > 0.01f) {
+            float turnRate = steeringAngle * std::fabs(speed) / config.wheelBase;
+            yawAngleDot = speed >= 0 ? turnRate : -turnRate;
+        }
+        
+        yawAngle += yawAngleDot * deltaTime;
+        rotation = yawAngle; 
+        normalizeRotation();
+        
+        lateralVelocity *= 0.8f;
+        
+        velocity.x = speed * std::sinf(rotation);
+        velocity.z = speed * std::cosf(rotation);
+        
+        position.x += velocity.x * deltaTime;
+        position.z += velocity.z * deltaTime;
+        return;
+    }
+    
+    float safeSpeed = std::fabs(speed);
+    
+    sideSlipAngleDot = 
+        - (config.corneringStiffnessFront + config.corneringStiffnessRear)/(config.mass * safeSpeed) * sideSlipAngle
+        + ((config.corneringStiffnessRear * config.rearAxleDistance - config.corneringStiffnessFront * config.frontAxleDistance) 
+           / (config.mass * std::powf(safeSpeed, 2)) - 1) * yawAngleDot
+        + config.corneringStiffnessFront * steeringAngle / (config.mass * safeSpeed);
+
+    yawAngleDotDot = 
+        - (config.corneringStiffnessRear * config.rearAxleDistance - config.corneringStiffnessFront * config.frontAxleDistance) 
+          * sideSlipAngle / yawInertia
+        - (config.corneringStiffnessRear * std::powf(config.rearAxleDistance, 2) + config.corneringStiffnessFront 
+           * std::powf(config.frontAxleDistance, 2)) * yawAngleDot / (yawInertia * safeSpeed)
+        + (config.corneringStiffnessFront * config.frontAxleDistance) * steeringAngle / yawInertia;
+    
+    const float MAX_SLIP_ANGLE_DOT = 2.0f;
+    const float MAX_YAW_ACCEL = 5.0f;
+    
+    sideSlipAngleDot = std::max(-MAX_SLIP_ANGLE_DOT, std::min(sideSlipAngleDot, MAX_SLIP_ANGLE_DOT));
+    yawAngleDotDot = std::max(-MAX_YAW_ACCEL, std::min(yawAngleDotDot, MAX_YAW_ACCEL));
+    
+    // Update state variables
+    sideSlipAngle += sideSlipAngleDot * deltaTime;
+    yawAngleDot += yawAngleDotDot * deltaTime;
+    yawAngle += yawAngleDot * deltaTime;
+    rotation = yawAngle; 
+    normalizeRotation();
+    
+    const float MAX_SLIP_ANGLE = 0.3f; // radians (about 17 degrees)
+    const float MAX_YAW_RATE = 2.0f;   // radians per second
+    
+    sideSlipAngle = std::max(-MAX_SLIP_ANGLE, std::min(sideSlipAngle, MAX_SLIP_ANGLE));
+    yawAngleDot = std::max(-MAX_YAW_RATE, std::min(yawAngleDot, MAX_YAW_RATE));
+    
+    float lateralAcceleration = speed * yawAngleDot + speed * sideSlipAngleDot;
+    
+    lateralVelocity += lateralAcceleration * deltaTime;
+    
+    const float MAX_LATERAL_VEL = 10.0f;
+    lateralVelocity = std::max(-MAX_LATERAL_VEL, std::min(lateralVelocity, MAX_LATERAL_VEL));
+    
+    velocity.x = speed * std::sinf(rotation) + lateralVelocity * std::cosf(rotation);
+    velocity.z = speed * std::cosf(rotation) - lateralVelocity * std::sinf(rotation);
+    
+    position.x += velocity.x * deltaTime;
+    position.z += velocity.z * deltaTime;
+    
+    // Keep the car above the ground
+    if (position.y < 0.5f) {
+        position.y = 0.5f;
+    }
 }
 } // namespace CarGame

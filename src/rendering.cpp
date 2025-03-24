@@ -101,6 +101,19 @@ void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3
     DrawText(TextFormat("Drag Force: %.2f N", car.dragForce), textX, textY, fontSize, textColor);
     textY += lineHeight;
     DrawText(TextFormat("Rolling Resistance: %.2f N", car.rollingResistance), textX, textY, fontSize, textColor);
+
+    textY += lineHeight;
+    DrawText(TextFormat("Lateral Velocity: %.2f m/s", car.lateralVelocity), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Yaw Rate: %.2f rad/s", car.yawRate), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Slip Angle Front: %.2f°", car.slipAngleFront * RAD2DEG), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Slip Angle Rear: %.2f°", car.slipAngleRear * RAD2DEG), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Lateral Force Front: %.2f N", car.lateralForceFront), textX, textY, fontSize, textColor);
+    textY += lineHeight;
+    DrawText(TextFormat("Lateral Force Rear: %.2f N", car.lateralForceRear), textX, textY, fontSize, textColor);
     
     // Draw instructions at the bottom left
     DrawText("Controls: Arrow Keys - Up (throttle), Down (brake), Left/Right (steering)", 20, GetScreenHeight() - 40, 20, DARKGRAY);
