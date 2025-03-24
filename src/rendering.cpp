@@ -211,4 +211,101 @@ int Renderer::drawSection(int x, int y, const char* title,
     return y;
 }
 
+void Renderer::drawRLStats(const Car& car, const RLAgent& agent, float reward, float targetSpeed) {
+    int textX = 20;
+    int textY = 20;
+    
+    // Draw panel background
+    DrawRectangle(
+        textX - UI::PanelMargin, 
+        textY - UI::PanelMargin, 
+        300, 
+        200, 
+        UI::PanelColor
+    );
+    
+    // Panel title
+    DrawText("REINFORCEMENT LEARNING", textX, textY, UI::FontSize, UI::HeaderColor);
+    textY += UI::LineHeight + UI::SectionSpacing;
+    
+    // RL stats
+    DrawText(TextFormat("Episode: %d", rlStats.episode), textX, textY, UI::FontSize, UI::TextColor);
+    textY += UI::LineHeight;
+    
+    DrawText(TextFormat("Current Reward: %.2f", reward), textX, textY, UI::FontSize, UI::TextColor);
+    textY += UI::LineHeight;
+    
+    DrawText(TextFormat("Avg Reward: %.2f", rlStats.averageReward), textX, textY, UI::FontSize, UI::TextColor);
+    textY += UI::LineHeight;
+    
+    DrawText(TextFormat("Best Reward: %.2f", rlStats.bestReward), textX, textY, UI::FontSize, UI::TextColor);
+    textY += UI::LineHeight;
+    
+    DrawText(TextFormat("Exploration Rate: %.2f", agent.getExplorationRate()), textX, textY, UI::FontSize, UI::TextColor);
+    textY += UI::LineHeight;
+    
+    DrawText(TextFormat("Target Speed: %.1f km/h", targetSpeed * 3.6f), textX, textY, UI::FontSize, UI::TextColor);
+    textY += UI::LineHeight;
+    
+    // Performance: Speed error bar chart
+    if (!rlStats.speedErrorHistory.empty()) {
+        textY += 10;
+        DrawText("Speed Error History:", textX, textY, UI::FontSize, UI::TextColor);
+        textY += UI::LineHeight;
+        
+        const int barWidth = 5;
+        const int barHeight = 50;
+        const int maxBars = 50;
+        
+        // Draw baseline
+        DrawLine(textX, textY + barHeight/2, textX + maxBars * barWidth, textY + barHeight/2, GRAY);
+        
+        // Draw last N entries
+        int startIdx = std::max(0, (int)rlStats.speedErrorHistory.size() - maxBars);
+        for (int i = 0; i < std::min(maxBars, (int)rlStats.speedErrorHistory.size()); i++) {
+            float error = rlStats.speedErrorHistory[startIdx + i];
+            int barY = textY + barHeight/2;
+            int height = (int)(error * 5.0f); // Scale factor
+            
+            if (height > 0) {
+                DrawRectangle(textX + i * barWidth, barY - height, barWidth - 1, height, RED);
+            } else {
+                DrawRectangle(textX + i * barWidth, barY, barWidth - 1, -height, GREEN);
+            }
+        }
+    }
+}
+
+void Renderer::updateRLStats(float reward, float speedError) {
+    // Update cumulative stats
+    rlStats.cumulativeReward += reward;
+    rlStats.rewardHistory.push_back(reward);
+    rlStats.speedErrorHistory.push_back(speedError);
+    
+    // Limit history size
+    const size_t MAX_HISTORY = 1000;
+    if (rlStats.rewardHistory.size() > MAX_HISTORY) {
+        rlStats.rewardHistory.erase(rlStats.rewardHistory.begin());
+    }
+    if (rlStats.speedErrorHistory.size() > MAX_HISTORY) {
+        rlStats.speedErrorHistory.erase(rlStats.speedErrorHistory.begin());
+    }
+    
+    // Calculate average
+    if (!rlStats.rewardHistory.empty()) {
+        float sum = 0.0f;
+        for (float r : rlStats.rewardHistory) {
+            sum += r;
+        }
+        rlStats.averageReward = sum / rlStats.rewardHistory.size();
+    }
+    
+    // Update best reward
+    rlStats.bestReward = std::max(rlStats.bestReward, reward);
+}
+
+void Renderer::newEpisode() {
+    rlStats.episode++;
+}
+
 } // namespace CarGame
