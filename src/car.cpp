@@ -279,8 +279,8 @@ void Car::updateLateralPhysics(float deltaTime) {
     normalLoadFront = std::max(MIN_LOAD, normalLoadFront);
     normalLoadRear = std::max(MIN_LOAD, normalLoadRear);
     
-    lateralForceFront = 2 * calculatePacejkaLateral(slipAngleFront, normalLoadFront, true);
-    lateralForceRear = 2 * calculatePacejkaLateral(slipAngleRear, normalLoadRear, false);
+    lateralForceFront = 1 * calculatePacejkaLateral(slipAngleFront, normalLoadFront, true);
+    lateralForceRear = 1 * calculatePacejkaLateral(slipAngleRear, normalLoadRear, false);
     
     float totalLateralForce = lateralForceFront + lateralForceRear;
     yawMoment = lateralForceFront * config.frontAxleDistance - lateralForceRear * config.rearAxleDistance;
@@ -288,14 +288,14 @@ void Car::updateLateralPhysics(float deltaTime) {
     lateralAcceleration = totalLateralForce / config.mass;
     float yawAcceleration = yawMoment / yawInertia;
     
-    const float YAW_DAMPING = 0.5f;
-    const float LATERAL_DAMPING = 0.5f;
+    const float YAW_DAMPING = 0.45f;
+    const float LATERAL_DAMPING = 0.45f;
     
     yawAcceleration -= yawRate * YAW_DAMPING;
     lateralAcceleration -= lateralVelocity * LATERAL_DAMPING;
     
-    const float MAX_LATERAL_ACCEL = 20.0f;
-    const float MAX_YAW_ACCEL = 5.0f;
+    const float MAX_LATERAL_ACCEL = 40.0f;
+    const float MAX_YAW_ACCEL = 10.0f;
     
     lateralAcceleration = std::max(-MAX_LATERAL_ACCEL, std::min(lateralAcceleration, MAX_LATERAL_ACCEL));
     yawAcceleration = std::max(-MAX_YAW_ACCEL, std::min(yawAcceleration, MAX_YAW_ACCEL));
@@ -303,7 +303,7 @@ void Car::updateLateralPhysics(float deltaTime) {
     lateralVelocity += lateralAcceleration * deltaTime;
     yawRate += yawAcceleration * deltaTime;
     
-    const float MAX_LATERAL_VEL = 10.0f;
+    const float MAX_LATERAL_VEL = 20.0f;
     const float MAX_YAW_RATE = 2.0f;
     
     lateralVelocity = std::max(-MAX_LATERAL_VEL, std::min(lateralVelocity, MAX_LATERAL_VEL));
