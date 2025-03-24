@@ -15,7 +15,7 @@ EnhancedEpisodeManager::EnhancedEpisodeManager(float episodeDuration, float targ
       averageReward(0.0f),
       bestReward(-std::numeric_limits<float>::max()),
       car(nullptr),
-      trainingStepsPerUpdate(1), // Train every frame for faster learning
+      trainingStepsPerUpdate(1), // Train every frame
       experienceReplayBatchSize(64), // Larger batch size
       framesSinceLastTraining(0),
       successfulEpisodes(0),
@@ -40,8 +40,31 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
         return;
     }
     
-    // Calculate reward
-    currentReward = task.calculateReward(car, deltaTime);
+    // Calculate reward - COMPLETELY SIMPLIFIED ULTRA CLEAR REWARD
+    float speedError = std::abs(car.speed - task.getTargetSpeed());
+    float targetSpeed = task.getTargetSpeed();
+    
+    // BINARY SUCCESS/FAILURE REWARD
+    if (speedError < targetSpeed * 0.1f) { // Within 10% of target
+        currentReward = 100.0f; // BIG REWARD for being on target
+    } 
+    else if (speedError < targetSpeed * 0.2f) { // Within 20% of target
+        currentReward = 50.0f; // Moderate reward for being close
+    }
+    else if (speedError < targetSpeed * 0.5f) { // Within 50% of target
+        currentReward = 20.0f - speedError * 2.0f; // Small reward for being in right direction
+    }
+    else {
+        // Large penalty growing with distance
+        currentReward = -30.0f - speedError * 5.0f;
+    }
+    
+    // Severe penalty for using throttle and brake simultaneously
+    if (car.throttle > 0.1f && car.brake > 0.1f) {
+        currentReward -= 100.0f;
+    }
+    
+    // Update cumulative reward
     episodeCumulativeReward += currentReward;
     
     // Store experience in replay buffer
@@ -62,7 +85,7 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
     if (explorationRateHistory.size() > MAX_HISTORY_SIZE) explorationRateHistory.pop_front();
     
     // Train on EVERY frame for much faster learning
-    for (int i = 0; i < 10; i++) {  // 10 training steps every frame!
+    for (int i = 0; i < 20; i++) {  // 20 training steps every frame!
         agent.trainFromReplay(experienceReplayBatchSize);
     }
     
@@ -77,6 +100,10 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
     car.throttle = currentAction[0];
     car.brake = currentAction[1];
     
+    // Print current car state
+    printf("CAR - Speed: %.1f km/h, Throttle: %.2f, Brake: %.2f\n", 
+           car.speed * 3.6f, car.throttle, car.brake);
+    
     // Check if episode is complete - shorter episodes
     if (isEpisodeComplete()) {
         logEpisodeResults();
@@ -84,7 +111,11 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
         if (isEpisodeSuccessful()) {
             successfulEpisodes++;
             // Print success message for visibility
-            printf("SUCCESS! Episode %d completed with good speed control!\n", episodeCount);
+            printf("*** EPISODE %d SUCCEEDED! Good speed control! ***\n", episodeCount);
+        }
+        else {
+            printf("Episode %d failed. Average speed error: %.2f\n", 
+                   episodeCount, std::abs(car.speed - task.getTargetSpeed()));
         }
         
         // Reset for next episode
@@ -97,8 +128,13 @@ bool EnhancedEpisodeManager::isEpisodeComplete() const {
 }
 
 void EnhancedEpisodeManager::resetEpisode(Car& car) {
-    // Reset task and car
-    task.resetEpisode(car);
+    // Reset car to starting position
+    car.position = Vector3{ 0.0f, 0.5f, 0.0f };
+    car.velocity = Vector3{ 0.0f, 0.0f, 0.0f };
+    car.speed = 0.0f;
+    car.rotation = 0.0f;
+    car.throttle = 0.0f;
+    car.brake = 0.0f;
     
     // Reset episode timer
     episodeTimer = 0.0f;
@@ -129,25 +165,17 @@ void EnhancedEpisodeManager::logEpisodeResults() {
     }
     
     bestReward = std::max(bestReward, episodeCumulativeReward);
-    
-    // Log to console
-    printf("Episode %d complete. Reward: %.2f, Avg Speed Error: %.2f, Success: %s\n", 
-           episodeCount, episodeCumulativeReward, std::abs(averageSpeedError),
-           isEpisodeSuccessful() ? "YES" : "NO");
 }
 
 bool EnhancedEpisodeManager::isEpisodeSuccessful() const {
-    // Consider episode successful if average speed error is within 10% of target
-    float averageSpeedError = 0.0f;
-    if (!speedErrorHistory.empty()) {
-        averageSpeedError = std::accumulate(speedErrorHistory.begin(), speedErrorHistory.end(), 0.0f) / 
-                           speedErrorHistory.size();
-    }
+    // Consider episode successful if final speed error is within 10% of target
+    if (!car) return false;
     
     float targetSpeed = task.getTargetSpeed();
+    float finalSpeedError = std::abs(car->speed - targetSpeed);
     float errorThreshold = targetSpeed * 0.1f; // 10% of target speed
     
-    return std::abs(averageSpeedError) < errorThreshold;
+    return finalSpeedError < errorThreshold;
 }
 
 void EnhancedEpisodeManager::saveStats(const std::string& filename) {

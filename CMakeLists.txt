@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 project(CarGame)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Raylib package (may need to be installed on the system)
@@ -17,22 +17,31 @@ if (NOT raylib_FOUND)
     FetchContent_MakeAvailable(raylib)
 endif()
 
-# Add all source files
-set(SOURCES
-    src/main.cpp
+# Common sources
+set(COMMON_SOURCES
     src/car.cpp
     src/camera.cpp
     src/rendering.cpp
     src/input_handler.cpp
     src/rl_agent.cpp
-    src/enhanced_episode_manager.cpp
+    src/episode_manager.cpp
+    src/enhanced_episode_manager.cpp  # Add this file
 )
 
-# Add executable
-add_executable(${PROJECT_NAME} ${SOURCES})
+# Main game executable
+add_executable(CarGame src/main.cpp ${COMMON_SOURCES})
+target_include_directories(CarGame PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(CarGame raylib)
 
-# Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# Parallel game executable (separate from main)
+add_executable(CarGameParallel 
+    src/main_parallel.cpp 
+    src/parallel_rl_agent.cpp
+    ${COMMON_SOURCES}
+)
+target_include_directories(CarGameParallel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(CarGameParallel raylib)
 
-# Link against Raylib
-target_link_libraries(${PROJECT_NAME} raylib)
+# Coordinator executable (standalone)
+add_executable(parallel_coordinator src/parallel_coordinator.cpp)
+target_include_directories(parallel_coordinator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -14,7 +14,7 @@ int main(void) {
     // Initialization
     const int screenWidth = 1920;
     const int screenHeight = 1080;
-    InitWindow(screenWidth, screenHeight, "Enhanced Car Game with Fast RL Learning");
+    InitWindow(screenWidth, screenHeight, "Ultra-Enhanced Car Game with Fast RL Learning");
 
     Vector3 startPosition = { 0.0f, 0.5f, 0.0f };
     Car car(startPosition);
@@ -22,16 +22,20 @@ int main(void) {
     Renderer renderer;
     InputHandler inputHandler;
     
-    // Initialize enhanced RL components with SUPER aggressive parameters
-    RLAgent agent(0.8f, 0.95f, 1.0f);  // Very high learning rate, high discount factor, full exploration
-    const float targetSpeed = 8.33f;    // m/s (about 30 km/h)
+    // Initialize enhanced RL components with aggressive parameters
+    RLAgent agent(0.9f, 0.9f, 1.0f);  // Very high learning rate, high discount factor, full exploration
+    const float targetSpeed = 8.33f;   // m/s (about 30 km/h)
     
-    // Ultra-short episodes (5 seconds) for much faster learning cycles
-    EnhancedEpisodeManager episodeManager(5.0f, targetSpeed, 1, 64);
+    // Longer episodes (15 seconds) for better evaluation
+    EnhancedEpisodeManager episodeManager(15.0f, targetSpeed, 1, 64);
     
     // Training mode flag (toggle with T key)
     bool trainingMode = true;
     bool lastKeyT = false;
+    
+    // Debug output flag (toggle with D key)
+    bool debugOutput = true;
+    bool lastKeyD = false;
     
     // Initialize renderer
     renderer.initialize(car);
@@ -44,6 +48,9 @@ int main(void) {
     
     // Capture time for each frame 
     float lastFrameTime = GetTime();
+    
+    // Training frames counter
+    int frameCount = 0;
 
     // Main game loop
     while (!WindowShouldClose()) {
@@ -62,7 +69,18 @@ int main(void) {
         }
         lastKeyT = currentKeyT;
         
+        // Check for debug output toggle
+        bool currentKeyD = IsKeyDown(KEY_D);
+        if (currentKeyD && !lastKeyD) {
+            debugOutput = !debugOutput;
+            printf("Debug output: %s\n", debugOutput ? "ON" : "OFF");
+        }
+        lastKeyD = currentKeyD;
+        
         if (trainingMode) {
+            // Count training frames
+            frameCount++;
+            
             // Enhanced RL agent controls the car
             episodeManager.update(deltaTime, car, agent);
             
@@ -75,8 +93,8 @@ int main(void) {
                 currentTime - lastSaveTime).count();
                 
             if (elapsedSecs > 300) {  // 5 minutes
-                agent.saveModel("rl_model_enhanced.dat");
-                episodeManager.saveStats("training_stats_enhanced.csv");
+                agent.saveModel("rl_model_ultra.dat");
+                episodeManager.saveStats("training_stats_ultra.csv");
                 lastSaveTime = currentTime;
                 printf("Auto-saved model and stats\n");
             }
@@ -103,17 +121,19 @@ int main(void) {
             drawActionSpace(agent, car);
         }
         
-        // Draw mode indicator
-        DrawText(trainingMode ? "ENHANCED TRAINING MODE (Press T to toggle)" : 
-                              "MANUAL MODE (Press T to toggle)",
+        // Show additional mode indicators
+        DrawText(trainingMode ? "PURE RL TRAINING MODE" : "MANUAL MODE",
                  GetScreenWidth() - 400, GetScreenHeight() - 60, 20, trainingMode ? RED : GREEN);
+        
+        DrawText("T: Toggle Training | D: Toggle Debug Output",
+                 GetScreenWidth() - 500, GetScreenHeight() - 30, 20, DARKGRAY);
         
         EndDrawing();
     }
 
     // Save the final model and stats
-    agent.saveModel("rl_model_enhanced_final.dat");
-    episodeManager.saveStats("training_stats_enhanced_final.csv");
+    agent.saveModel("rl_model_ultra_final.dat");
+    episodeManager.saveStats("training_stats_ultra_final.csv");
 
     CloseWindow();
     return 0;

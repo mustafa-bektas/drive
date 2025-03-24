@@ -7,23 +7,44 @@
 
 namespace CarGame {
 
-RLAgent::RLAgent(float learningRate, float discountFactor, float explorationRate)
+    RLAgent::RLAgent(float learningRate, float discountFactor, float explorationRate)
     : alpha(learningRate), gamma(discountFactor), epsilon(explorationRate), 
       initialEpsilon(explorationRate), gen(rd()) {
     
-    // Simplified action space - just 5 actions for faster learning
+    // ULTRASHORT ACTION SPACE - Just 3 critical actions
     actionSpace = {
         {0.0f, 0.0f},   // No throttle, no brake
-        {0.5f, 0.0f},   // Medium throttle
-        {1.0f, 0.0f},   // Full throttle
-        {0.0f, 0.5f},   // Medium brake
+        {0.4f, 0.0f},   // Moderate throttle
+        {0.0f, 0.4f}    // Moderate brake
     };
     
-    // Initialize Q-table with optimistic values to encourage exploration
-    for (const auto& action : actionSpace) {
-        std::string actionKey = actionToString(action);
-        qTable["0;0"][actionKey] = 10.0f;  // Optimistic initialization
+    // Initialize Q-table with highly optimistic values
+    for (int i = 0; i < 50; i += 2) { // For different speeds
+        for (int j = -10; j <= 10; j += 2) { // For different errors
+            std::string stateKey = std::to_string(i) + ";" + std::to_string(j);
+            
+            // Start with optimistic values for throttle when below target
+            if (i < 8) { // Below target speed
+                qTable[stateKey][actionToString({0.4f, 0.0f})] = 100.0f;  // Prefer throttle
+                qTable[stateKey][actionToString({0.0f, 0.0f})] = 50.0f;   // Neutral
+                qTable[stateKey][actionToString({0.0f, 0.4f})] = -50.0f;  // Avoid brake
+            } 
+            // Start with optimistic values for brake when above target
+            else if (i > 10) { // Above target speed 
+                qTable[stateKey][actionToString({0.0f, 0.4f})] = 100.0f;  // Prefer brake
+                qTable[stateKey][actionToString({0.0f, 0.0f})] = 50.0f;   // Neutral
+                qTable[stateKey][actionToString({0.4f, 0.0f})] = -50.0f;  // Avoid throttle
+            }
+            // Near target speed, prefer doing nothing
+            else {
+                qTable[stateKey][actionToString({0.0f, 0.0f})] = 100.0f;  // Prefer neutral
+                qTable[stateKey][actionToString({0.4f, 0.0f})] = 0.0f;    // Throttle sometimes
+                qTable[stateKey][actionToString({0.0f, 0.4f})] = 0.0f;    // Brake sometimes
+            }
+        }
     }
+    
+    printf("Q-table initialized with common-sense values\n");
 }
 
 std::vector<float> RLAgent::getAction(const std::vector<float>& state) {
@@ -31,28 +52,70 @@ std::vector<float> RLAgent::getAction(const std::vector<float>& state) {
     std::vector<float> discreteState = discretizeState(state);
     std::string stateKey = stateToString(discreteState);
     
+    // Print current state for debugging
+    if (state.size() >= 2) {
+        //printf("State: Speed=%.1f, Error=%.1f | ", state[0], state[1]);
+    }
+    
     // Exploration: random action with probability epsilon
     std::uniform_real_distribution<> distr(0.0, 1.0);
     if (distr(gen) < epsilon) {
-        // Return random action from action space
-        std::uniform_int_distribution<> actionDistr(0, actionSpace.size() - 1);
-        return actionSpace[actionDistr(gen)];
+        // Use standard random selection
+        int randomActionIdx = std::uniform_int_distribution<>(0, actionSpace.size() - 1)(gen);
+        //printf("EXPLORE-RANDOM: %s\n", actionToString(actionSpace[randomActionIdx]).c_str());
+        return actionSpace[randomActionIdx];
     }
     
     // Exploitation: best known action
     if (qTable.find(stateKey) == qTable.end()) {
-        // State not seen before, initialize with zero values
+        // State not seen before, initialize with optimistic values
         qTable[stateKey] = std::map<std::string, float>();
-    }
-    
-    // If no actions exist yet, use a default action
-    if (qTable[stateKey].empty()) {
-        return actionSpace[2]; // Default: 50% throttle, no brake
+        if (state.size() >= 2) {
+            float error = state[1];
+            if (error < -1.0f) { // Too slow
+                qTable[stateKey][actionToString({0.4f, 0.0f})] = 50.0f;   // Prefer throttle
+                qTable[stateKey][actionToString({0.0f, 0.0f})] = 0.0f;    // Neutral
+                qTable[stateKey][actionToString({0.0f, 0.4f})] = -50.0f;  // Avoid brake
+            } else if (error > 1.0f) { // Too fast
+                qTable[stateKey][actionToString({0.0f, 0.4f})] = 50.0f;   // Prefer brake
+                qTable[stateKey][actionToString({0.0f, 0.0f})] = 0.0f;    // Neutral
+                qTable[stateKey][actionToString({0.4f, 0.0f})] = -50.0f;  // Avoid throttle
+            } else { // Near target
+                qTable[stateKey][actionToString({0.0f, 0.0f})] = 50.0f;   // Prefer neutral
+                qTable[stateKey][actionToString({0.4f, 0.0f})] = 0.0f;    // Throttle sometimes
+                qTable[stateKey][actionToString({0.0f, 0.4f})] = 0.0f;    // Brake sometimes
+            }
+        }
     }
     
     // Find action with highest Q-value
-    int actionIndex = selectActionFromQTable(stateKey);
-    return actionSpace[actionIndex];
+    std::string bestActionKey;
+    float bestValue = -std::numeric_limits<float>::max();
+    
+    //printf("Q-values: ");
+    for (const auto& actionPair : qTable[stateKey]) {
+        //printf("[%s: %.1f] ", actionPair.first.c_str(), actionPair.second);
+        if (actionPair.second > bestValue) {
+            bestValue = actionPair.second;
+            bestActionKey = actionPair.first;
+        }
+    }
+    
+    // If no best action found, default to no action
+    if (bestActionKey.empty()) {
+        printf("DEFAULT: No action found\n");
+        return {0.0f, 0.0f};
+    }
+    
+    // Parse best action
+    std::vector<float> bestAction;
+    std::istringstream iss(bestActionKey);
+    std::string token;
+    while (std::getline(iss, token, ',')) {
+        bestAction.push_back(std::stof(token));
+    }
+    
+    return bestAction;
 }
 
 int RLAgent::selectActionFromQTable(const std::string& stateKey) {
@@ -90,15 +153,15 @@ int RLAgent::selectActionFromQTable(const std::string& stateKey) {
 }
 
 void RLAgent::updateQValues(const std::vector<float>& state, const std::vector<float>& action, 
-                           float reward, const std::vector<float>& nextState) {
+    float reward, const std::vector<float>& nextState) {
     // Discretize states
     std::vector<float> discreteState = discretizeState(state);
     std::vector<float> discreteNextState = discretizeState(nextState);
-    
+
     std::string stateKey = stateToString(discreteState);
     std::string actionKey = actionToString(action);
     std::string nextStateKey = stateToString(discreteNextState);
-    
+
     // Initialize Q-value if not exists
     if (qTable.find(stateKey) == qTable.end()) {
         qTable[stateKey] = std::map<std::string, float>();
@@ -106,10 +169,10 @@ void RLAgent::updateQValues(const std::vector<float>& state, const std::vector<f
     if (qTable[stateKey].find(actionKey) == qTable[stateKey].end()) {
         qTable[stateKey][actionKey] = 0.0f;
     }
-    
+
     // Get current Q value
     float currentQ = qTable[stateKey][actionKey];
-    
+
     // Find max Q value for next state
     float maxNextQ = 0.0f;
     if (qTable.find(nextStateKey) != qTable.end() && !qTable[nextStateKey].empty()) {
@@ -118,50 +181,79 @@ void RLAgent::updateQValues(const std::vector<float>& state, const std::vector<f
             maxNextQ = std::max(maxNextQ, actionPair.second);
         }
     }
-    
-    // Q-learning update
-    float newQ = currentQ + alpha * (reward + gamma * maxNextQ - currentQ);
+
+    // Use very high learning rate for dramatic updates
+    float effectiveAlpha = 0.9f;
+
+    // Apply clipping to prevent extreme Q-values
+    float targetQ = reward + gamma * maxNextQ;
+    targetQ = std::max(-1000.0f, std::min(1000.0f, targetQ));
+
+    // Q-learning update with simulated experience replay
+    float newQ = currentQ + effectiveAlpha * (targetQ - currentQ);
     qTable[stateKey][actionKey] = newQ;
+
+    // Debug output for significant updates
+    if (std::abs(newQ - currentQ) > 10.0f) {
+        /* printf("Big Q update: %s, %s: %.1f -> %.1f (reward: %.1f)\n", 
+            stateKey.c_str(), actionKey.c_str(), currentQ, newQ, reward); */
+    }
 }
 
 void RLAgent::addExperience(const std::vector<float>& state, const std::vector<float>& action, 
-                           float reward, const std::vector<float>& nextState, bool done) {
+    float reward, const std::vector<float>& nextState, bool done) {
     // Add experience to replay buffer
     if (replayBuffer.size() >= MAX_REPLAY_BUFFER_SIZE) {
         replayBuffer.pop_front();
     }
-    
+
     replayBuffer.push_back({state, action, reward, nextState, done});
 }
 
 void RLAgent::trainFromReplay(int batchSize) {
-    if (replayBuffer.size() < batchSize) return;
-    
+    if (replayBuffer.size() < 5) return; // Need at least some experiences
+
     // Select random batch from replay buffer
     std::vector<int> indices(replayBuffer.size());
     std::iota(indices.begin(), indices.end(), 0);
     std::shuffle(indices.begin(), indices.end(), gen);
-    
+
     // Train on mini-batch
-    for (int i = 0; i < std::min(batchSize, (int)replayBuffer.size()); i++) {
+    int actualBatchSize = std::min(batchSize, (int)replayBuffer.size());
+    for (int i = 0; i < actualBatchSize; i++) {
         const Experience& exp = replayBuffer[indices[i]];
         updateQValues(exp.state, exp.action, exp.reward, exp.nextState);
+    }
+
+    // Also directly train on some synthetic experiences
+    if (replayBuffer.size() >= 2) {
+        // Add synthetic experience for being at target speed
+        std::vector<float> targetState = {8.33f, 0.0f}; // At target speed
+        std::vector<float> targetAction = {0.0f, 0.0f}; // Do nothing
+        std::vector<float> targetNextState = {8.33f, 0.0f}; // Stay at target
+        updateQValues(targetState, targetAction, 100.0f, targetNextState);
+
+        // Add synthetic experience for being too slow
+        std::vector<float> slowState = {4.0f, -4.33f}; // Below target speed
+        std::vector<float> throttleAction = {0.4f, 0.0f}; // Throttle
+        std::vector<float> speedingUpState = {6.0f, -2.33f}; // Getting closer
+        updateQValues(slowState, throttleAction, 50.0f, speedingUpState);
+
+        // Add synthetic experience for being too fast
+        std::vector<float> fastState = {12.0f, 3.67f}; // Above target speed
+        std::vector<float> brakeAction = {0.0f, 0.4f}; // Brake
+        std::vector<float> slowingDownState = {10.0f, 1.67f}; // Getting closer
+        updateQValues(fastState, brakeAction, 50.0f, slowingDownState);
     }
 }
 
 void RLAgent::decayExploration(float amount) {
-    // Much more aggressive linear decay
+    // Super aggressive decay
     static int steps = 0;
     steps++;
-    
-    // Rapid decay over just 100 steps
-    epsilon = std::max(0.05f, initialEpsilon * (1.0f - steps / 100.0f));
-    
-    // Reset exploration periodically to escape local optima
-    if (steps % 200 == 0) {
-        epsilon = std::min(0.5f, epsilon + 0.2f);
-        printf("Exploration bump! New epsilon: %.2f\n", epsilon);
-    }
+
+    // Very rapid decay over 50 steps
+    epsilon = std::max(0.05f, initialEpsilon * (1.0f - steps / 50.0f));
 }
 
 std::string RLAgent::stateToString(const std::vector<float>& state) {
@@ -183,26 +275,30 @@ std::string RLAgent::actionToString(const std::vector<float>& action) {
 }
 
 std::vector<float> RLAgent::discretizeState(const std::vector<float>& state) {
-    // Much coarser discretization for faster learning
+    // DRASTICALLY simplified discretization - just 5 speed buckets and 5 error buckets
     std::vector<float> discretized;
-    
-    // Only use first two state components (speed and error) for simplicity
+
+    // Only care about speed and error
     if (state.size() > 0) {
-        // Speed: discretize to nearest 2.0 m/s
         float speed = state[0];
-        discretized.push_back(std::round(speed / 2.0f) * 2.0f);
+        // Discretize to 5 buckets: very slow, slow, at target, fast, very fast
+        if (speed < 4.0f) discretized.push_back(2.0f);
+        else if (speed < 7.0f) discretized.push_back(6.0f);
+        else if (speed < 10.0f) discretized.push_back(8.0f);
+        else if (speed < 13.0f) discretized.push_back(12.0f);
+        else discretized.push_back(16.0f);
     }
-    
+
     if (state.size() > 1) {
-        // Error: discretize to just 5 possible values (-large, -small, zero, small, large)
+        // Error: just 5 categories
         float error = state[1];
-        if (error < -4.0f) discretized.push_back(-5.0f);
+        if (error < -4.0f) discretized.push_back(-6.0f);
         else if (error < -1.0f) discretized.push_back(-2.0f);
         else if (error < 1.0f) discretized.push_back(0.0f);
         else if (error < 4.0f) discretized.push_back(2.0f);
-        else discretized.push_back(5.0f);
+        else discretized.push_back(6.0f);
     }
-    
+
     return discretized;
 }
 

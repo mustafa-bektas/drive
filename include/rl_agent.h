@@ -29,7 +29,7 @@ public:
     // Experience replay
     void addExperience(const std::vector<float>& state, const std::vector<float>& action, 
                       float reward, const std::vector<float>& nextState, bool done);
-    void trainFromReplay(int batchSize = 32);
+    virtual void trainFromReplay(int batchSize = 32);
     
     // Training utilities
     void saveModel(const std::string& filename);
@@ -63,7 +63,6 @@ private:
     float initialEpsilon; // Starting exploration rate
     
     // Simple Q-table for discrete states/actions
-    std::map<std::string, std::map<std::string, float>> qTable;
     
     // Action space - discrete set of throttle/brake combinations
     std::vector<std::vector<float>> actionSpace;
@@ -88,12 +87,15 @@ private:
     
     std::random_device rd;
     std::mt19937 gen;
+
+protected:
+    std::map<std::string, std::map<std::string, float>> qTable;
 };
 
 // Enhanced speed control task with better state representation
 class EnhancedSpeedControlTask {
 public:
-    EnhancedSpeedControlTask(float targetSpeed = 20.0f, float episodeDuration = 30.0f);
+    EnhancedSpeedControlTask(float targetSpeed = 10.0f, float episodeDuration = 30.0f);
     
     std::vector<float> getState(const Car& car, float deltaTime);
     float calculateReward(const Car& car, float deltaTime);
