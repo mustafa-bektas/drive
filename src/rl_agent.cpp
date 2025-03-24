@@ -11,18 +11,19 @@ RLAgent::RLAgent(float learningRate, float discountFactor, float explorationRate
     : alpha(learningRate), gamma(discountFactor), epsilon(explorationRate), 
       initialEpsilon(explorationRate), gen(rd()) {
     
-    // Initialize discrete action space for throttle/brake combinations
+    // Simplified action space - just 5 actions for faster learning
     actionSpace = {
         {0.0f, 0.0f},   // No throttle, no brake
-        {0.25f, 0.0f},  // 25% throttle
-        {0.5f, 0.0f},   // 50% throttle
-        {0.75f, 0.0f},  // 75% throttle
-        {1.0f, 0.0f},   // 100% throttle
-        {0.0f, 0.25f},  // 25% brake
-        {0.0f, 0.5f},   // 50% brake
-        {0.0f, 0.75f},  // 75% brake
-        {0.0f, 1.0f}    // 100% brake
+        {0.5f, 0.0f},   // Medium throttle
+        {1.0f, 0.0f},   // Full throttle
+        {0.0f, 0.5f},   // Medium brake
     };
+    
+    // Initialize Q-table with optimistic values to encourage exploration
+    for (const auto& action : actionSpace) {
+        std::string actionKey = actionToString(action);
+        qTable["0;0"][actionKey] = 10.0f;  // Optimistic initialization
+    }
 }
 
 std::vector<float> RLAgent::getAction(const std::vector<float>& state) {
@@ -149,16 +150,18 @@ void RLAgent::trainFromReplay(int batchSize) {
 }
 
 void RLAgent::decayExploration(float amount) {
-    // Sigmoid decay function for smoother transition
+    // Much more aggressive linear decay
     static int steps = 0;
     steps++;
     
-    // Decay epsilon using a sigmoid function
-    float progress = steps / 500.0f; // Adjust 500.0f to control decay speed
-    epsilon = initialEpsilon / (1.0f + std::exp(10.0f * (progress - 0.5f)));
+    // Rapid decay over just 100 steps
+    epsilon = std::max(0.05f, initialEpsilon * (1.0f - steps / 100.0f));
     
-    // Ensure minimum exploration
-    epsilon = std::max(0.05f, epsilon);
+    // Reset exploration periodically to escape local optima
+    if (steps % 200 == 0) {
+        epsilon = std::min(0.5f, epsilon + 0.2f);
+        printf("Exploration bump! New epsilon: %.2f\n", epsilon);
+    }
 }
 
 std::string RLAgent::stateToString(const std::vector<float>& state) {
@@ -180,21 +183,24 @@ std::string RLAgent::actionToString(const std::vector<float>& action) {
 }
 
 std::vector<float> RLAgent::discretizeState(const std::vector<float>& state) {
-    // Discretize continuous state space for Q-table lookup
+    // Much coarser discretization for faster learning
     std::vector<float> discretized;
     
-    // Discretization values for each state component
-    const std::vector<float> resolutions = {
-        0.5f,   // Speed: discretize to nearest 0.5 m/s
-        1.0f,   // Error: discretize to nearest 1.0 m/s
-        0.2f,   // Acceleration: discretize to nearest 0.2 m/s²
-        0.25f,  // Previous throttle: discretize to nearest 0.25
-        0.25f   // Previous brake: discretize to nearest 0.25
-    };
+    // Only use first two state components (speed and error) for simplicity
+    if (state.size() > 0) {
+        // Speed: discretize to nearest 2.0 m/s
+        float speed = state[0];
+        discretized.push_back(std::round(speed / 2.0f) * 2.0f);
+    }
     
-    for (size_t i = 0; i < state.size(); i++) {
-        float resolution = (i < resolutions.size()) ? resolutions[i] : 0.5f;
-        discretized.push_back(std::round(state[i] / resolution) * resolution);
+    if (state.size() > 1) {
+        // Error: discretize to just 5 possible values (-large, -small, zero, small, large)
+        float error = state[1];
+        if (error < -4.0f) discretized.push_back(-5.0f);
+        else if (error < -1.0f) discretized.push_back(-2.0f);
+        else if (error < 1.0f) discretized.push_back(0.0f);
+        else if (error < 4.0f) discretized.push_back(2.0f);
+        else discretized.push_back(5.0f);
     }
     
     return discretized;
@@ -424,37 +430,34 @@ float EnhancedSpeedControlTask::calculateReward(const Car& car, float deltaTime)
     float speedError = car.speed - targetSpeed;
     float speedErrorAbs = std::abs(speedError);
     
-    // Update speed error integral
-    speedErrorIntegral += speedError * deltaTime;
-    speedErrorIntegral = std::max(-10.0f, std::min(10.0f, speedErrorIntegral));
+    // Much stronger reward function - large rewards for being close to target
+    float speedReward = 0.0f;
     
-    // Base reward - Gaussian function centered at target speed
-    float speedReward = SPEED_ERROR_WEIGHT * std::exp(-speedErrorAbs * speedErrorAbs / 4.0f);
-    
-    // Smoothness reward - rewards stable speed near target
-    float smoothnessReward = 0.0f;
-    if (speedErrorAbs < 2.0f) {
-        smoothnessReward = SMOOTHNESS_WEIGHT * (2.0f - speedErrorAbs) / 2.0f;
+    // Very high reward when close to target (within 10%)
+    if (speedErrorAbs < targetSpeed * 0.1f) {
+        speedReward = 50.0f * (1.0f - speedErrorAbs / (targetSpeed * 0.1f));
+    }
+    // Medium reward when reasonably close (within 30%)
+    else if (speedErrorAbs < targetSpeed * 0.3f) {
+        speedReward = 20.0f * (1.0f - speedErrorAbs / (targetSpeed * 0.3f));
+    }
+    // Large penalty when far from target
+    else {
+        speedReward = -30.0f * speedErrorAbs / targetSpeed;
     }
     
-    // Penalty for using throttle and brake simultaneously
+    // Severe penalty for using throttle and brake simultaneously
     float controlPenalty = 0.0f;
     if (car.throttle > 0.1f && car.brake > 0.1f) {
-        controlPenalty = -CONTROL_PENALTY;
+        controlPenalty = -100.0f;
     }
-    
-    // Penalty for excessive throttle changes
-    float throttleChangePenalty = -THROTTLE_CHANGE_PENALTY * std::abs(car.throttle - prevThrottle);
     
     // Update state memory
     prevThrottle = car.throttle;
     prevBrake = car.brake;
     
-    // Combined reward
-    float totalReward = speedReward + smoothnessReward + controlPenalty + throttleChangePenalty;
-    
-    // Scale for visibility in UI (0 to 100 range)
-    return totalReward * 10.0f;
+    // Combined reward - much higher magnitude for faster learning
+    return speedReward + controlPenalty;
 }
 
 bool EnhancedSpeedControlTask::isEpisodeComplete(float episodeTimer) const {

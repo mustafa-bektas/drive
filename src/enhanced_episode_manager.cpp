@@ -15,8 +15,8 @@ EnhancedEpisodeManager::EnhancedEpisodeManager(float episodeDuration, float targ
       averageReward(0.0f),
       bestReward(-std::numeric_limits<float>::max()),
       car(nullptr),
-      trainingStepsPerUpdate(trainingStepsPerUpdate),
-      experienceReplayBatchSize(experienceReplayBatchSize),
+      trainingStepsPerUpdate(1), // Train every frame for faster learning
+      experienceReplayBatchSize(64), // Larger batch size
       framesSinceLastTraining(0),
       successfulEpisodes(0),
       firstFrame(true) {
@@ -26,8 +26,11 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
     this->car = &car;
     episodeTimer += deltaTime;
     
-    // Get current state from task
-    std::vector<float> nextState = task.getState(car, deltaTime);
+    // Simplified state: just speed and error to target speed
+    std::vector<float> nextState = {
+        car.speed,
+        car.speed - task.getTargetSpeed()
+    };
     
     // On first frame of episode, just store the initial state
     if (firstFrame) {
@@ -46,7 +49,7 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
     agent.addExperience(currentState, currentAction, currentReward, nextState, done);
     
     // Record metrics for visualization
-    agent.recordEpisodeMetrics(currentReward, 0.0f); // Could add actual Q-value here
+    agent.recordEpisodeMetrics(currentReward, 0.0f);
     
     // Update visualization histories
     rewardHistory.push_back(currentReward);
@@ -58,17 +61,13 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
     explorationRateHistory.push_back(agent.getExplorationRate());
     if (explorationRateHistory.size() > MAX_HISTORY_SIZE) explorationRateHistory.pop_front();
     
-    // Train using experience replay at regular intervals
-    framesSinceLastTraining++;
-    if (framesSinceLastTraining >= trainingStepsPerUpdate) {
-        for (int i = 0; i < 5; i++) {  // Multiple training steps per update
-            agent.trainFromReplay(experienceReplayBatchSize);
-        }
-        framesSinceLastTraining = 0;
-        
-        // Decay exploration rate
-        agent.decayExploration();
+    // Train on EVERY frame for much faster learning
+    for (int i = 0; i < 10; i++) {  // 10 training steps every frame!
+        agent.trainFromReplay(experienceReplayBatchSize);
     }
+    
+    // Decay exploration aggressively
+    agent.decayExploration();
     
     // Set next action
     currentState = nextState;
@@ -78,13 +77,14 @@ void EnhancedEpisodeManager::update(float deltaTime, Car& car, RLAgent& agent) {
     car.throttle = currentAction[0];
     car.brake = currentAction[1];
     
-    // Check if episode is complete
+    // Check if episode is complete - shorter episodes
     if (isEpisodeComplete()) {
         logEpisodeResults();
         
-        // Check if episode was successful
         if (isEpisodeSuccessful()) {
             successfulEpisodes++;
+            // Print success message for visibility
+            printf("SUCCESS! Episode %d completed with good speed control!\n", episodeCount);
         }
         
         // Reset for next episode

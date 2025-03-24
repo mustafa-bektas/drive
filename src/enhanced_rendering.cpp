@@ -7,6 +7,8 @@
 #include <algorithm>
 #include "rlgl.h"
 
+#pragma once
+
 namespace CarGame {
 
 // UI constants for enhanced visualization

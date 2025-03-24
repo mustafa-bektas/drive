@@ -4,14 +4,9 @@
 #include "../include/input_handler.h"
 #include "../include/rl_agent.h"
 #include "../include/enhanced_episode_manager.h"
+#include "enhanced_rendering.cpp"
+#include <memory>
 #include <chrono>
-
-// Include external function declarations from enhanced_rendering.cpp
-namespace CarGame {
-    void drawEnhancedRLStats(const Car& car, const RLAgent& agent, const EnhancedEpisodeManager& manager);
-    void drawLearningGraphs(const EnhancedEpisodeManager& manager, const RLAgent& agent);
-    void drawActionSpace(const RLAgent& agent, const Car& car);
-}
 
 using namespace CarGame;
 
@@ -27,12 +22,12 @@ int main(void) {
     Renderer renderer;
     InputHandler inputHandler;
     
-    // Initialize enhanced RL components with optimized parameters
-    RLAgent agent(0.3f, 0.95f, 1.0f);  // High learning rate, high discount factor, full exploration
+    // Initialize enhanced RL components with SUPER aggressive parameters
+    RLAgent agent(0.8f, 0.95f, 1.0f);  // Very high learning rate, high discount factor, full exploration
     const float targetSpeed = 8.33f;    // m/s (about 30 km/h)
     
-    // Short episode duration (10 seconds) for faster learning cycles
-    EnhancedEpisodeManager episodeManager(10.0f, targetSpeed);
+    // Ultra-short episodes (5 seconds) for much faster learning cycles
+    EnhancedEpisodeManager episodeManager(5.0f, targetSpeed, 1, 64);
     
     // Training mode flag (toggle with T key)
     bool trainingMode = true;
