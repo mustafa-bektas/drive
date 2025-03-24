@@ -1,0 +1,135 @@
+#pragma once
+
+#include "neural_network.h"
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <iostream>
+
+namespace CarGame {
+
+class ModelLoader {
+public:
+    // Load model from text file exported by Python
+    static bool loadModelFromPython(const std::string& filename, NeuralNetwork& network) {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open model file " << filename << std::endl;
+            return false;
+        }
+        
+        // Read network architecture
+        std::string line;
+        if (!std::getline(file, line) || line != "network_architecture") {
+            std::cerr << "Error: Invalid model file format (missing architecture section)" << std::endl;
+            return false;
+        }
+        
+        // Read layer sizes
+        std::vector<int> layerSizes;
+        while (std::getline(file, line)) {
+            if (line == "weights") break;
+            try {
+                layerSizes.push_back(std::stoi(line));
+            } catch (const std::exception& e) {
+                std::cerr << "Error parsing layer size: " << e.what() << std::endl;
+                return false;
+            }
+        }
+        
+        // Check if we have at least input and output layer
+        if (layerSizes.size() < 2) {
+            std::cerr << "Error: Network must have at least input and output layers" << std::endl;
+            return false;
+        }
+        
+        // Re-create the network with the correct architecture
+        NeuralNetwork newNetwork(layerSizes);
+        
+        // Read weights section
+        std::vector<std::vector<std::vector<float>>> weights;
+        std::vector<std::vector<float>> currentLayerWeights;
+        int currentLayer = 0;
+        int currentNeuron = 0;
+        
+        // Initialize weights structure
+        for (size_t i = 1; i < layerSizes.size(); i++) {
+            int outputSize = layerSizes[i];
+            int inputSize = layerSizes[i-1];
+            
+            std::vector<std::vector<float>> layerWeights;
+            for (int j = 0; j < outputSize; j++) {
+                layerWeights.push_back(std::vector<float>(inputSize, 0.0f));
+            }
+            weights.push_back(layerWeights);
+        }
+        
+        // Read weights
+        while (std::getline(file, line)) {
+            if (line == "biases") break;
+            
+            std::istringstream iss(line);
+            float weight;
+            std::vector<float> neuronWeights;
+            
+            while (iss >> weight) {
+                neuronWeights.push_back(weight);
+            }
+            
+            // Store weights
+            if (!neuronWeights.empty()) {
+                if (currentNeuron < weights[currentLayer].size() && 
+                    neuronWeights.size() == weights[currentLayer][currentNeuron].size()) {
+                    weights[currentLayer][currentNeuron] = neuronWeights;
+                } else {
+                    std::cerr << "Error: Weight dimensions mismatch" << std::endl;
+                    return false;
+                }
+                
+                currentNeuron++;
+                if (currentNeuron >= weights[currentLayer].size()) {
+                    currentNeuron = 0;
+                    currentLayer++;
+                }
+            }
+        }
+        
+        // Read biases
+        std::vector<std::vector<float>> biases;
+        for (size_t i = 1; i < layerSizes.size(); i++) {
+            biases.push_back(std::vector<float>(layerSizes[i], 0.0f));
+        }
+        
+        currentLayer = 0;
+        while (std::getline(file, line) && currentLayer < biases.size()) {
+            std::istringstream iss(line);
+            float bias;
+            std::vector<float> layerBiases;
+            
+            while (iss >> bias) {
+                layerBiases.push_back(bias);
+            }
+            
+            if (layerBiases.size() == biases[currentLayer].size()) {
+                biases[currentLayer] = layerBiases;
+                currentLayer++;
+            } else {
+                std::cerr << "Error: Bias dimensions mismatch" << std::endl;
+                return false;
+            }
+        }
+        
+        // Set weights and biases in the network
+        newNetwork.setAllWeights(weights);
+        newNetwork.setAllBiases(biases);
+        
+        // Replace the input network with our new one
+        network = newNetwork;
+        
+        std::cout << "Model successfully loaded from " << filename << std::endl;
+        return true;
+    }
+};
+
+} // namespace CarGame
