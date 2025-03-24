@@ -8,8 +8,8 @@ using namespace CarGame;
 
 int main(void) {
     // Initialization
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
+    const int screenWidth = 1920;
+    const int screenHeight = 1080;
     InitWindow(screenWidth, screenHeight, "Car Game");
 
     Vector3 startPosition = { 0.0f, 0.5f, 0.0f };

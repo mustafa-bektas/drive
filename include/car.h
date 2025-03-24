@@ -23,8 +23,8 @@ public:
         float minMovementSpeed = 0.5f,
         int gearRatio = 7,
         float tireRadius = 0.33f,
-        float inertiaAtEngine = 10.0f,
-        int mass = 1000);
+        float inertiaAtEngine = 0.45f,
+        int mass = 1600);
 
     float width;
     float length;
@@ -76,6 +76,9 @@ public:
     float longitudinalForce;
     float dragForce;
     float rollingResistance;
+    float wheelRotationSpeed; // in radians per second
+    bool clutch;
+    float netForce;
 };
 
 } // namespace CarGame

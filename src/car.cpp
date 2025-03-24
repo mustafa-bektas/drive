@@ -52,7 +52,10 @@ Car::Car(const Vector3& startPosition)
       slipRatio(0.0f),
       longitudinalForce(0.0f),
       dragForce(0.0f),
-      rollingResistance(0.0f) {
+      rollingResistance(0.0f),
+      wheelRotationSpeed(0.0f),
+      clutch(false),
+      netForce(0.0f) {
 }
 
 // Updates the car's physics
@@ -64,16 +67,21 @@ void Car::update(float deltaTime) {
 void Car::updateLongitudinalPhysics(float deltaTime) {
     // Update engine speed based on throttle input
     // Engine idle speed
-    const float idleRPM = 800.0f;
+    const float idleRPM = 1.0f;
     
     if (throttle > 0.1f) {
         // Engine revs up when throttle is applied (even when stationary)
-        float maxRPM = 8000.0f;
+        /* float maxRPM = 8000.0f;
         float targetRPM = idleRPM + throttle * (maxRPM - idleRPM);
-        engineSpeed += (targetRPM - engineSpeed) * deltaTime * 3.0f;
+        engineSpeed += (targetRPM - engineSpeed) * deltaTime * 3.0f; */
+        clutch = false; // Clutch disengaged
+        engineSpeed_dot = getEngineTorque(throttle, engineSpeed) / config.inertiaAtEngine;
+        engineSpeed += engineSpeed_dot * deltaTime;
+        if (engineSpeed > 8000.0f) engineSpeed = 8000.0f; // Limit engine speed
     } else if (std::abs(speed) < 0.5f) {
         // At idle when stopped
         engineSpeed = idleRPM;
+        clutch = true; // Clutch engaged
     } else {
         // When moving, match engine speed to wheel rotation
         float wheelRPM = std::abs(speed) / config.tireRadius * config.gearRatio * (60.0f / (2.0f * PI));
@@ -87,19 +95,15 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
     float engineTorque = getEngineTorque(throttle, engineSpeed);
     
     if (throttle < 0.1f && engineSpeed > 1000.0f) {
-        engineTorque -= (engineSpeed / 8000.0f) * 20.0f; // Engine braking increases with RPM
+        engineTorque -= (engineSpeed / 8000.0f) * 75.0f; // Engine braking increases with RPM
     }
 
-    // Calculate wheel forces with updated engine speed
-    float wheelTorque = engineTorque * config.gearRatio * 0.9f;
-    static float wheelRotationSpeed = 0.0f;
-
-    float speedMatchingRotation = speed / config.tireRadius;
+    wheelRotationSpeed = clutch ? wheelRotationSpeed : engineSpeed / config.gearRatio * (2.0f * PI / 60.0f);
 
     float brakeTorque = 0.0f;
     if (brake > 0.0f) {
         // Up to 5000 N·m braking torque
-        brakeTorque = brake * 5000.0f; 
+        brakeTorque = brake * 8000.0f; 
         
         // Brakes always act to slow rotation toward zero
         if (wheelRotationSpeed > 0.0f) {
@@ -107,8 +111,8 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
         } else if (wheelRotationSpeed < 0.0f) {
             // Already correct direction
         } else {
-            // When wheels aren't rotating, apply in direction opposing car motion
-            brakeTorque = (speed > 0.0f) ? -brakeTorque : (speed < 0.0f) ? brakeTorque : 0.0f;
+            // When wheels aren't rotating
+            brakeTorque = 0.0f;
         }
     }
 
@@ -130,8 +134,7 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
     float totalResistance = getTotalResistanceForces(deltaTime);
     
     // Net force on the vehicle
-    float netForce = longitudinalForce - totalResistance;
-    printf("Net Force: %.2f\n", netForce);
+    netForce = longitudinalForce - totalResistance;
 
     // Calculate acceleration (F = ma)
     acceleration.x = netForce / config.mass;
@@ -154,8 +157,8 @@ float Car::getTotalResistanceForces(float deltaTime) {
     dragForce = 0.5f * airDensity * dragCoefficient * frontalArea * speed * speed;
     
     // Rolling resistance coefficient (increases slightly with speed)
-    //float rollingCoefficient = 0.015f * (1.0f + std::abs(speed) * 0.01f);
-    float rollingCoefficient = 0.0f;
+    float rollingCoefficient = 0.015f * (1.0f + std::abs(speed) * 0.01f);
+    //float rollingCoefficient = 0.0f;
     
     // Rolling resistance force: Cr * m * g
     rollingResistance = rollingCoefficient * config.mass * 9.81f;
