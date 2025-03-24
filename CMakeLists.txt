@@ -25,7 +25,8 @@ set(SOURCES
     src/rendering.cpp
     src/input_handler.cpp
     src/rl_agent.cpp
-    src/episode_manager.cpp
+    src/enhanced_episode_manager.cpp
+    src/enhanced_rendering.cpp
 )
 
 # Add executable

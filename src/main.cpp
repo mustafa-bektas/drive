@@ -2,10 +2,16 @@
 #include "../include/camera.h"
 #include "../include/rendering.h"
 #include "../include/input_handler.h"
-#include "rl_agent.h"     // Add the RL agent header
-#include "episode_manager.h"  // Add episode manager
-#include <memory>
+#include "../include/rl_agent.h"
+#include "../include/enhanced_episode_manager.h"
 #include <chrono>
+
+// Include external function declarations from enhanced_rendering.cpp
+namespace CarGame {
+    void drawEnhancedRLStats(const Car& car, const RLAgent& agent, const EnhancedEpisodeManager& manager);
+    void drawLearningGraphs(const EnhancedEpisodeManager& manager, const RLAgent& agent);
+    void drawActionSpace(const RLAgent& agent, const Car& car);
+}
 
 using namespace CarGame;
 
@@ -13,7 +19,7 @@ int main(void) {
     // Initialization
     const int screenWidth = 1920;
     const int screenHeight = 1080;
-    InitWindow(screenWidth, screenHeight, "Car Game with RL");
+    InitWindow(screenWidth, screenHeight, "Enhanced Car Game with Fast RL Learning");
 
     Vector3 startPosition = { 0.0f, 0.5f, 0.0f };
     Car car(startPosition);
@@ -21,10 +27,12 @@ int main(void) {
     Renderer renderer;
     InputHandler inputHandler;
     
-    // Initialize RL components
-    RLAgent agent(0.1f, 0.9f, 0.5f);  // learning rate, discount factor, exploration rate
-    const float targetSpeed = 8.33f;   // m/s (about 72 km/h)
-    EpisodeManager episodeManager(30.0f, targetSpeed);  // 30 second episodes
+    // Initialize enhanced RL components with optimized parameters
+    RLAgent agent(0.3f, 0.95f, 1.0f);  // High learning rate, high discount factor, full exploration
+    const float targetSpeed = 8.33f;    // m/s (about 30 km/h)
+    
+    // Short episode duration (10 seconds) for faster learning cycles
+    EnhancedEpisodeManager episodeManager(10.0f, targetSpeed);
     
     // Training mode flag (toggle with T key)
     bool trainingMode = true;
@@ -38,10 +46,18 @@ int main(void) {
     SetTargetFPS(60);
     auto startTime = std::chrono::high_resolution_clock::now();
     auto lastSaveTime = startTime;
+    
+    // Capture time for each frame 
+    float lastFrameTime = GetTime();
 
     // Main game loop
     while (!WindowShouldClose()) {
-        float deltaTime = GetFrameTime();
+        float currentTime = GetTime();
+        float deltaTime = currentTime - lastFrameTime;
+        lastFrameTime = currentTime;
+        
+        // Cap deltaTime to avoid physics instability
+        if (deltaTime > 0.1f) deltaTime = 0.1f;
         
         // Check for training mode toggle
         bool currentKeyT = IsKeyDown(KEY_T);
@@ -52,33 +68,11 @@ int main(void) {
         lastKeyT = currentKeyT;
         
         if (trainingMode) {
-            // RL agent controls the car
-            
-            // 1. Get current state
-            std::vector<float> state = {car.speed};
-            
-            // 2. Get action from agent
-            std::vector<float> action = agent.getAction(state);
-            
-            // 3. Apply action to car
-            car.throttle = action[0];
-            car.brake = action[1];
-            
-            // 4. Update car physics
-            car.update(deltaTime);
-            
-            // 5. Get new state and calculate reward
-            std::vector<float> nextState = {car.speed};
-            float reward = -std::abs(car.speed - targetSpeed);
-            
-            // 6. Update agent
-            agent.updateQValues(state, action, reward, nextState);
-            
-            // 7. Update episode manager
+            // Enhanced RL agent controls the car
             episodeManager.update(deltaTime, car, agent);
             
-            // 8. Update renderer stats
-            renderer.updateRLStats(reward, car.speed - targetSpeed);
+            // Update car physics
+            car.update(deltaTime);
             
             // Auto-save every 5 minutes
             auto currentTime = std::chrono::high_resolution_clock::now();
@@ -86,15 +80,10 @@ int main(void) {
                 currentTime - lastSaveTime).count();
                 
             if (elapsedSecs > 300) {  // 5 minutes
-                agent.saveModel("rl_model.dat");
-                episodeManager.saveStats("training_stats.csv");
+                agent.saveModel("rl_model_enhanced.dat");
+                episodeManager.saveStats("training_stats_enhanced.csv");
                 lastSaveTime = currentTime;
                 printf("Auto-saved model and stats\n");
-            }
-            
-            // Start a new episode if needed
-            if (episodeManager.isEpisodeComplete()) {
-                renderer.newEpisode();
             }
         } else {
             // Manual control mode
@@ -112,13 +101,15 @@ int main(void) {
         // Draw main scene
         renderer.drawScene(camera, car, floorPosition);
         
-        // Draw RL stats if in training mode
+        // Draw enhanced RL visualization if in training mode
         if (trainingMode) {
-            renderer.drawRLStats(car, agent, episodeManager.getCurrentReward(), targetSpeed);
+            drawEnhancedRLStats(car, agent, episodeManager);
+            drawLearningGraphs(episodeManager, agent);
+            drawActionSpace(agent, car);
         }
         
         // Draw mode indicator
-        DrawText(trainingMode ? "TRAINING MODE (Press T to toggle)" : 
+        DrawText(trainingMode ? "ENHANCED TRAINING MODE (Press T to toggle)" : 
                               "MANUAL MODE (Press T to toggle)",
                  GetScreenWidth() - 400, GetScreenHeight() - 60, 20, trainingMode ? RED : GREEN);
         
@@ -126,8 +117,8 @@ int main(void) {
     }
 
     // Save the final model and stats
-    agent.saveModel("rl_model_final.dat");
-    episodeManager.saveStats("training_stats_final.csv");
+    agent.saveModel("rl_model_enhanced_final.dat");
+    episodeManager.saveStats("training_stats_enhanced_final.csv");
 
     CloseWindow();
     return 0;
