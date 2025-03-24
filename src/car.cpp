@@ -1,6 +1,7 @@
 #include "../include/car.h"
 #include "car.h"
 #include <utility>
+#include <cstdio>
 
 namespace CarGame {
 
@@ -61,58 +62,152 @@ void Car::update(float deltaTime) {
 }
 
 void Car::updateLongitudinalPhysics(float deltaTime) {
-    float engineTorque = 0.00f;
-    if (brake < 0.5f) {
-        engineTorque = getEngineTorque(throttle, engineSpeed);
+    // Update engine speed based on throttle input
+    // Engine idle speed
+    const float idleRPM = 800.0f;
+    
+    if (throttle > 0.1f) {
+        // Engine revs up when throttle is applied (even when stationary)
+        float maxRPM = 8000.0f;
+        float targetRPM = idleRPM + throttle * (maxRPM - idleRPM);
+        engineSpeed += (targetRPM - engineSpeed) * deltaTime * 3.0f;
+    } else if (std::abs(speed) < 0.5f) {
+        // At idle when stopped
+        engineSpeed = idleRPM;
+    } else {
+        // When moving, match engine speed to wheel rotation
+        float wheelRPM = std::abs(speed) / config.tireRadius * config.gearRatio * (60.0f / (2.0f * PI));
+        engineSpeed = std::max(idleRPM, wheelRPM);
     }
     
-    float totalLoadTorque = config.gearRatio * config.tireRadius * getTotalResistanceForces(deltaTime);
-    engineSpeed_dot = (engineTorque - totalLoadTorque) / config.inertiaAtEngine;
-    engineSpeed += engineSpeed_dot * deltaTime;
-    if (engineSpeed < 0.0f) engineSpeed = 0.0f; // Prevent negative engine speed
-    if (engineSpeed > 7000.0f) engineSpeed = 7000.0f; // Prevent excessive engine speed
-    float wheelSpeed = engineSpeed / config.gearRatio;
-
-    // calculate longitudinal slip ratio
-    slipRatio = calculateSlipRatio(wheelSpeed, speed);
-
-    // calculate longitudinal force (2 wheel drive)
-    longitudinalForce = 2 * calculateTireForcePacejka(slipRatio);
-    longitudinalForce = std::max(-30000.0f, std::min(longitudinalForce, 30000.0f));
+    // Limit engine speed
+    if (engineSpeed > 8000.0f) engineSpeed = 8000.0f;
     
-    // Add braking effect
+    // Calculate engine torque based on updated engine speed
+    float engineTorque = getEngineTorque(throttle, engineSpeed);
+    
+    /* if (throttle < 0.1f && engineSpeed > 1000.0f) {
+        engineTorque -= (engineSpeed / 8000.0f) * 200.0f; // Engine braking increases with RPM
+    } */
+
+    // Calculate wheel forces with updated engine speed
+    float wheelTorque = engineTorque * config.gearRatio * 0.9f;
+    float wheelRotationSpeed = 0.0f;
+
+    float speedMatchingRotation = speed / config.tireRadius;
+
+    float brakeTorque = 0.0f;
     if (brake > 0.0f) {
-        // Simple braking model - apply opposite force to current motion
-        float brakeForce = brake * 20000.0f; // Maximum braking force
-        if (speed > 0.0f) {
-            longitudinalForce -= brakeForce;
-        } else if (speed < 0.0f) {
-            longitudinalForce += brakeForce;
+        // Up to 5000 N·m braking torque
+        brakeTorque = brake * 5000.0f; 
+        
+        // Brakes always act to slow rotation toward zero
+        if (wheelRotationSpeed > 0.0f) {
+            brakeTorque = -brakeTorque;
+        } else if (wheelRotationSpeed < 0.0f) {
+            // Already correct direction
+        } else {
+            // When wheels aren't rotating, apply in direction opposing car motion
+            brakeTorque = (speed > 0.0f) ? -brakeTorque : (speed < 0.0f) ? brakeTorque : 0.0f;
         }
     }
 
-    if (std::abs(speed) < 1.0f) {
-        acceleration.x *= (std::abs(speed) + 0.1f);
-    }
+    float wheelInertia = 5.0f;  // kg·m²
+    float wheelAngularAccel = (engineTorque + brakeTorque) / wheelInertia;
+    
+    // STEP 7: Update wheel rotation speed based on torques
+    wheelRotationSpeed += wheelAngularAccel * deltaTime;
+    
+    // STEP 8: Calculate tire slip using actual wheel rotation
+    float wheelLinearSpeed = wheelRotationSpeed * config.tireRadius;
 
-    // calculate acceleration
-    acceleration.x = longitudinalForce / config.mass;
-    acceleration.z = 0.0f; // No lateral acceleration in this context
-    acceleration.y = 0.0f; // No vertical acceleration in this context
+    slipRatio = calculateSlipRatio(wheelLinearSpeed, speed);    
+    
+    // Longitudinal force is limited by tire grip (Pacejka model)
+    longitudinalForce = 2 * calculateTireForcePacejka(slipRatio); // For 2 drive wheels
+    
+    // Calculate total resistance
+    float totalResistance = getTotalResistanceForces(deltaTime);
+    
+    // Net force on the vehicle
+    float netForce = longitudinalForce - totalResistance;
+    printf("Net Force: %.2f\n", netForce);
 
-    // update speed
+    // Calculate acceleration (F = ma)
+    acceleration.x = netForce / config.mass;
+    
+    // Update speed
     speed += acceleration.x * deltaTime;
-    if (speed < config.minSpeed) speed = config.minSpeed; // Prevent negative speed
 }
 
 float Car::getTotalResistanceForces(float deltaTime) {
-    // calculate aerodynamic drag
-    dragForce = 0.5f * config.width * config.height * 0.3f * 1.225f * speed * speed;
+    // Air density (kg/m³)
+    const float airDensity = 1.225f;
+    
+    // Drag coefficient (dimensionless)
+    const float dragCoefficient = 0.3f;
+    
+    // Frontal area (m²)
+    float frontalArea = config.width * config.height * 0.8f; // Not all of width*height is effective
+    
+    // Drag force: 0.5 * ρ * Cd * A * v²
+    dragForce = 0.5f * airDensity * dragCoefficient * frontalArea * speed * speed;
+    
+    // Rolling resistance coefficient (increases slightly with speed)
+    //float rollingCoefficient = 0.015f * (1.0f + std::abs(speed) * 0.01f);
+    float rollingCoefficient = 0.0f;
+    
+    // Rolling resistance force: Cr * m * g
+    rollingResistance = rollingCoefficient * config.mass * 9.81f;
+    
+    // Add direction to rolling resistance
+    if (speed != 0.0f) {
+        rollingResistance *= (speed > 0.0f ? 1.0f : -1.0f);
+    }
+    
+    return dragForce + rollingResistance;
+}
 
-    // calculate rolling resistance
-    rollingResistance = 0.01f * config.mass * 9.81f * (1.0f + speed * 0.01f);
-    float totalResistance = dragForce + rollingResistance;
-    return totalResistance;
+float Car::calculateTireForcePacejka(float slipRatio) const {
+    // Pacejka parameters
+    float D = 1.0f;     // Peak coefficient (dimensionless)
+    float C = 1.5f;     // Shape factor
+    float B = 10.0f;    // Stiffness factor
+    float E = 0.1f;     // Curvature factor
+    float Fz = 4000.0f; // Normal load per tire (N)
+
+    // Calculate coefficient from Magic Formula
+    float coefficient = D * std::sinf(C * std::atanf(B * slipRatio - E * (B * slipRatio - std::atanf(B * slipRatio))));
+    
+    // Apply coefficient to normal load
+    return coefficient * Fz;
+}
+
+float Car::calculateSlipRatio(float wheelLinearSpeed, float vehicleSpeed) const {
+    // Calculate absolute vehicle speed for denominator calculation
+    float speedAbs = std::abs(vehicleSpeed);
+    const float minSpeed = 0.5f;
+    float result;
+    
+    // Handle low-speed scenario to avoid division by near-zero
+    if (speedAbs < minSpeed) {
+        // During near-standstill, use minimum speed as denominator
+        // This creates a smooth transition and avoids numerical instability
+        result = (wheelLinearSpeed - vehicleSpeed) / minSpeed;
+    } else {
+        // Normal driving - proper slip ratio calculation
+        // Using absolute speed in denominator preserves slip direction
+        result = (wheelLinearSpeed - vehicleSpeed) / speedAbs;
+    }
+    
+    // Clamp to physically reasonable values (-1 to 1)
+    // Values outside this range are theoretically possible but rarely useful in simulation
+    result = std::max(-1.0f, std::min(result, 1.0f));
+    return result;
+}
+
+float Car::getEngineTorque(float throttle, float rpm) const {
+    return throttle * (400.0f + 250.0f * (rpm / 4000.0f) * (1.0f - rpm / 8000.0f));
 }
 
 void Car::updateLateralPhysics(float deltaTime) {
@@ -151,45 +246,4 @@ void Car::normalizeRotation() {
     if (rotation > 2 * PI) rotation -= 2 * PI;
     if (rotation < 0) rotation += 2 * PI;
 }
-
-float Car::calculateTireForcePacejka(float slipRatio) const {
-    // Pacejka parameters
-    float D = 1.0f;     // Peak coefficient (dimensionless)
-    float C = 1.5f;     // Shape factor
-    float B = 10.0f;    // Stiffness factor
-    float E = 0.1f;     // Curvature factor
-    float Fz = 4000.0f; // Normal load per tire (N)
-
-    // Calculate coefficient from Magic Formula
-    float coefficient = D * std::sinf(C * std::atanf(B * slipRatio - E * (B * slipRatio - std::atanf(B * slipRatio))));
-    
-    // Apply coefficient to normal load
-    return coefficient * Fz;
-}
-
-float Car::calculateSlipRatio(float wheelSpeed, float carSpeed) const {
-    // Convert wheel angular velocity from RPM to rad/s
-    float wheelSpeedRadPS = engineSpeed / config.gearRatio * (2.0f * PI / 60.0f);
-    // Calculate wheel linear velocity in m/s
-    float wheelLinearSpeed = wheelSpeedRadPS * config.tireRadius;
-    // Safe slip ratio calculation
-    float speedAbs = std::abs(speed);
-    const float minSpeed = 0.5f;
-    float result = 0.0f;
-    if (speedAbs < minSpeed) {
-        // Gradual transition when nearly stopped
-        result = (wheelLinearSpeed - speed) / minSpeed;
-    } else {
-        // Normal calculation with proper sign maintenance
-        result = (wheelLinearSpeed - speed) / speedAbs;
-    }
-    // Clamp to reasonable values
-    result = std::max(-1.0f, std::min(slipRatio, 1.0f));
-
-    return result;
-}
-
-float Car::getEngineTorque(float throttle, float rpm) const {
-    return throttle * (400.0f + 250.0f * (rpm / 4000.0f) * (1.0f - rpm / 8000.0f));}
-
 } // namespace CarGame

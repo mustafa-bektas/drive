@@ -57,8 +57,8 @@ public:
     float getEngineTorque(float throttle, float rpm) const;
     void normalizeRotation();
     float calculateTireForcePacejka(float slipRatio) const;
-    float calculateSlipRatio(float wheelSpeed, float carSpeed) const;
-    
+    float calculateSlipRatio(float wheelLinearSpeed, float vehicleSpeed) const;
+
     // Car state
     Vector3 position;
     Vector3 velocity;
