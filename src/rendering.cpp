@@ -3,10 +3,11 @@
 #include <array>
 #include <vector>
 #include <functional>
+#include "rlgl.h"
 
 namespace CarGame {
 
-// UI constants for better maintainability
+// UI constants
 namespace UI {
     constexpr int FontSize = 20;
     constexpr int SmallFontSize = 16;
@@ -16,16 +17,14 @@ namespace UI {
     constexpr int PanelWidth = 310;
     constexpr int PanelHeight = 700;
     
-    // UI position calculation helpers
     inline int GetRightPanelX() {
         return GetScreenWidth() - 400;
     }
     
-    // Colors
     const Color TextColor = BLACK;
     const Color HeaderColor = DARKBLUE;
     const Color SectionColor = DARKGRAY;
-    const Color PanelColor = { 200, 200, 200, 180 }; // Light gray with transparency
+    const Color PanelColor = { 200, 200, 200, 180 };
 }
 
 Renderer::Renderer() = default;
@@ -35,6 +34,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initialize(const Car& car) {
+    // Create car model
     carModel = LoadModelFromMesh(GenMeshCube(
         car.config.width, 
         car.config.height, 
@@ -49,18 +49,64 @@ void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3
 }
 
 void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition) {
+    // Set a nice background color gradient manually
+    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), 
+                          SKYBLUE, DARKBLUE);
+    
     BeginMode3D(camera.getCamera());
-        // Draw the ground plane (50x50 units)
-        DrawPlane(floorPosition, { 50.0f, 50.0f }, LIGHTGRAY);
+        const float groundSize = 500.0f;
+        const int gridSpacing = 10;
+        
+        // Draw main ground plane
+        DrawPlane(floorPosition, { groundSize, groundSize }, GREEN);
+        
+        // Draw road
+        DrawCube({0, 0.01f, 0}, 10.0f, 0.01f, groundSize, DARKGRAY);
+        
+        // Draw road center line
+        for (int i = -groundSize/2; i < groundSize/2; i += 5) {
+            DrawCube({0, 0.02f, float(i)}, 0.5f, 0.01f, 2.0f, WHITE);
+        }
+        
+        // Draw road edges
+        DrawCube({-5.0f, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
+        DrawCube({5.0f, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
+        
+        // Draw grid for visual reference
+        for (int i = -gridSpacing; i <= gridSpacing; i++) {
+            DrawLine3D(
+                {-groundSize/2, 0.01f, i * (groundSize/gridSpacing/2)},
+                {groundSize/2, 0.01f, i * (groundSize/gridSpacing/2)},
+                {0, 100, 0, 80}
+            );
+            
+            DrawLine3D(
+                {i * (groundSize/gridSpacing/2), 0.01f, -groundSize/2},
+                {i * (groundSize/gridSpacing/2), 0.01f, groundSize/2},
+                {0, 100, 0, 80}
+            );
+        }
+        
+        // Draw additional decorative elements
+        // Trees on both sides of the road
+        for (int i = -groundSize/2; i <= groundSize/2; i += 10) {
+            // Left side trees
+            DrawCylinder({-15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
+            DrawSphere({-15, 5.0f, float(i)}, 3.0f, DARKGREEN);
+            
+            // Right side trees
+            DrawCylinder({15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
+            DrawSphere({15, 5.0f, float(i)}, 3.0f, DARKGREEN);
+        }
         
         // Draw the car model
         DrawModelEx(
             carModel, 
             car.position, 
-            { 0.0f, 1.0f, 0.0f },  // Rotation axis (Y-up)
-            car.rotation * RAD2DEG, // Convert radians to degrees
-            { 1.0f, 1.0f, 1.0f },  // Scale (unchanged)
-            MAROON                  // Car color
+            { 0.0f, 1.0f, 0.0f },
+            car.rotation * RAD2DEG,
+            { 1.0f, 1.0f, 1.0f },
+            MAROON
         );
     EndMode3D();
 }

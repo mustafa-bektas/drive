@@ -127,7 +127,7 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
 
         float brakeTorque = 0.0f;
         if (brake > 0.0f) {
-            brakeTorque = brake * 8000.0f; 
+            brakeTorque = brake * 15000.0f; 
             
             if (wheelRotationSpeed > 0.0f) {
                 brakeTorque = -brakeTorque;
