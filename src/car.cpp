@@ -65,7 +65,7 @@ Car::Car(const Vector3& startPosition)
       rotation(0.0f),
       steeringAngle(0.0f),
       steeringSpeed(0.0f),
-      config(),  // Uses default values from constructor
+      config(),
       engineSpeed(0.0f),
       engineSpeed_dot(0.0f),
       throttle(0.0f),
@@ -92,7 +92,6 @@ Car::Car(const Vector3& startPosition)
       yawAngleDotDot(0.0f) {
 }
 
-// Updates the car's physics
 void Car::update(float deltaTime) {
     updateLongitudinalPhysics(deltaTime);
     updateLateralPhysics(deltaTime);
@@ -102,13 +101,13 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
     const float idleRPM = 1.0f;
     
     if (throttle > 0.1f) {
-        clutch = false; // Clutch disengaged
+        clutch = false;
         engineSpeed_dot = getEngineTorque(throttle, engineSpeed) / config.inertiaAtEngine;
         engineSpeed += engineSpeed_dot * deltaTime;
-        if (engineSpeed > 8000.0f) engineSpeed = 8000.0f; // Limit engine speed
+        if (engineSpeed > 8000.0f) engineSpeed = 8000.0f;
     } else if (std::abs(speed) < 0.5f) {
         engineSpeed = idleRPM;
-        clutch = true; // Clutch engaged
+        clutch = true;
     } else {
         float wheelRPM = std::abs(speed) / config.tireRadius * config.gearRatio * (60.0f / (2.0f * PI));
         engineSpeed = std::max(idleRPM, wheelRPM);
@@ -121,7 +120,7 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
         float engineTorque = getEngineTorque(throttle, engineSpeed);
         
         if (throttle < 0.1f && engineSpeed > 1000.0f) {
-            engineTorque -= (engineSpeed / 8000.0f) * 75.0f; // Engine braking increases with RPM
+            engineTorque -= (engineSpeed / 8000.0f) * 75.0f;
         }
 
         wheelRotationSpeed = clutch ? wheelRotationSpeed : engineSpeed / config.gearRatio * (2.0f * PI / 60.0f);
@@ -133,7 +132,6 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
             if (wheelRotationSpeed > 0.0f) {
                 brakeTorque = -brakeTorque;
             } else if (wheelRotationSpeed < 0.0f) {
-                // Already correct direction
             } else {
                 brakeTorque = 0.0f;
             }
@@ -174,12 +172,11 @@ float Car::getTotalResistanceForces(float deltaTime) {
 }
 
 float Car::calculateTireForcePacejka(float slipRatio) const {
-    // Pacejka parameters
-    float D = 1.0f;     // Peak coefficient (dimensionless)
-    float C = 1.5f;     // Shape factor
-    float B = 10.0f;    // Stiffness factor
-    float E = 0.1f;     // Curvature factor
-    float Fz = 4000.0f; // Normal load per tire (N)
+    float D = 1.0f;
+    float C = 1.5f;
+    float B = 10.0f;
+    float E = 0.1f;
+    float Fz = 4000.0f;
 
     float coefficient = D * std::sinf(C * std::atanf(B * slipRatio - E * (B * slipRatio - std::atanf(B * slipRatio))));
     
@@ -211,31 +208,24 @@ void Car::normalizeRotation() {
 }
 
 float Car::calculatePacejkaLateral(float slipAngle, float Fz, bool isFrontTire) const {
-    // Select appropriate Pacejka parameters based on whether it's a front or rear tire
-    // (We could have different tunings for front/rear, but for simplicity we'll use the same)
     float B = config.pacejkaB_lat;
     float C = config.pacejkaC_lat;
     float D = config.pacejkaD_lat;
     float E = config.pacejkaE_lat;
     
-    // The core Pacejka "Magic Formula"
     float argument = B * slipAngle - E * (B * slipAngle - std::atan(B * slipAngle));
-    float peak = D * Fz;  // Peak force scales with normal load
+    float peak = D * Fz;
     
-    // Apply the formula to get lateral force
     float lateralForce = peak * std::sin(C * std::atan(argument));
     
-    // The force direction should be opposite to the slip angle
     return -lateralForce;
 }
 
-// Now replace your updateLateralPhysics method with this Pacejka-based implementation:
 void Car::updateLateralPhysics(float deltaTime) {
     float yawInertia = config.mass * (std::pow(config.wheelBase, 2) + std::pow(config.width, 2)) / 12.0f;
     const float MIN_SPEED = 2.0f;
     
     if (std::fabs(speed) < MIN_SPEED) {
-        // At low speeds, use a simplified kinematic model instead
         slipAngleFront *= 0.8f;
         slipAngleRear *= 0.8f;
         lateralVelocity *= 0.8f;
@@ -259,8 +249,8 @@ void Car::updateLateralPhysics(float deltaTime) {
         
     float vx = speed;
     
-    float vFront = lateralVelocity + config.frontAxleDistance * yawRate; // Lateral velocity at front axle
-    float vRear = lateralVelocity - config.rearAxleDistance * yawRate;   // Lateral velocity at rear axle
+    float vFront = lateralVelocity + config.frontAxleDistance * yawRate;
+    float vRear = lateralVelocity - config.rearAxleDistance * yawRate;
 
     slipAngleFront = std::atan2f(vFront, std::fabs(vx)) - (vx >= 0 ? steeringAngle : -steeringAngle);
     slipAngleRear = std::atan2f(vRear, std::fabs(vx));
@@ -268,12 +258,9 @@ void Car::updateLateralPhysics(float deltaTime) {
     float normalLoadFront = config.normalLoadFront;
     float normalLoadRear = config.normalLoadRear;
     
-    // Apply load transfer due to longitudinal acceleration
     float loadTransferLong = config.mass * acceleration.x * config.heightCG / config.wheelBase;
     normalLoadFront -= loadTransferLong;
     normalLoadRear += loadTransferLong;
-    
-    //float loadTransferLat = config.mass * lateralAcceleration * config.heightCG / config.width;
     
     const float MIN_LOAD = 500.0f;
     normalLoadFront = std::max(MIN_LOAD, normalLoadFront);
@@ -318,7 +305,6 @@ void Car::updateLateralPhysics(float deltaTime) {
     position.x += velocity.x * deltaTime;
     position.z += velocity.z * deltaTime;
     
-    // Keep the car above the ground
     if (position.y < 0.5f) {
         position.y = 0.5f;
     }

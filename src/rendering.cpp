@@ -1,19 +1,40 @@
 #include "../include/rendering.h"
 #include <string>
+#include <array>
+#include <vector>
+#include <functional>
 
 namespace CarGame {
 
-Renderer::Renderer() {
-    // Default constructor - model is initialized in initialize()
+// UI constants for better maintainability
+namespace UI {
+    constexpr int FontSize = 20;
+    constexpr int SmallFontSize = 16;
+    constexpr int LineHeight = 24;
+    constexpr int PanelMargin = 10;
+    constexpr int SectionSpacing = 5;
+    constexpr int PanelWidth = 310;
+    constexpr int PanelHeight = 700;
+    
+    // UI position calculation helpers
+    inline int GetRightPanelX() {
+        return GetScreenWidth() - 400;
+    }
+    
+    // Colors
+    const Color TextColor = BLACK;
+    const Color HeaderColor = DARKBLUE;
+    const Color SectionColor = DARKGRAY;
+    const Color PanelColor = { 200, 200, 200, 180 }; // Light gray with transparency
 }
 
+Renderer::Renderer() = default;
+
 Renderer::~Renderer() {
-    // Clean up resources
     UnloadModel(carModel);
 }
 
 void Renderer::initialize(const Car& car) {
-    // Create the car model (a simple box) using the car's config properties
     carModel = LoadModelFromMesh(GenMeshCube(
         car.config.width, 
         car.config.height, 
@@ -21,103 +42,127 @@ void Renderer::initialize(const Car& car) {
     ));
 }
 
-// Draws the 3D scene, including the floor and the car, and overlays UI text
 void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition) {
+    draw3DScene(camera, car, floorPosition);
+    drawTelemetryPanel(car);
+    drawInstructions();
+}
+
+void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition) {
     BeginMode3D(camera.getCamera());
-        // Draw the ground plane
-        DrawPlane(floorPosition, Vector2{50.0f, 50.0f}, LIGHTGRAY);
+        // Draw the ground plane (50x50 units)
+        DrawPlane(floorPosition, { 50.0f, 50.0f }, LIGHTGRAY);
         
-        // Draw the car model with the correct rotation (converted from radians to degrees)
-        DrawModelEx(carModel, car.position, 
-                    Vector3{0.0f, 1.0f, 0.0f}, 
-                    car.rotation * RAD2DEG, 
-                    Vector3{1.0f, 1.0f, 1.0f}, 
-                    MAROON);
+        // Draw the car model
+        DrawModelEx(
+            carModel, 
+            car.position, 
+            { 0.0f, 1.0f, 0.0f },  // Rotation axis (Y-up)
+            car.rotation * RAD2DEG, // Convert radians to degrees
+            { 1.0f, 1.0f, 1.0f },  // Scale (unchanged)
+            MAROON                  // Car color
+        );
     EndMode3D();
+}
 
-    // Get screen dimensions
-    int screenWidth = GetScreenWidth();
-    int textX = screenWidth - 400;  // Position text on right side
-    int textY = 20;                 // Start from the top with some margin
-    int lineHeight = 24;            // Space between lines
-    int fontSize = 20;
-    Color textColor = BLACK;
+void Renderer::drawTelemetryPanel(const Car& car) {
+    int textX = UI::GetRightPanelX();
+    int textY = 20;
     
-    // Draw a semi-transparent panel for better readability
-    DrawRectangle(textX - 10, textY - 10, 310, 560, ColorAlpha(LIGHTGRAY, 0.7f));
+    // Draw panel background
+    DrawRectangle(
+        textX - UI::PanelMargin, 
+        textY - UI::PanelMargin, 
+        UI::PanelWidth, 
+        UI::PanelHeight, 
+        UI::PanelColor
+    );
     
-    // Display Car Information - Section Title
-    DrawText("CAR TELEMETRY", textX, textY, fontSize, DARKBLUE);
-    textY += lineHeight + 5;
+    // Panel title
+    DrawText("CAR TELEMETRY", textX, textY, UI::FontSize, UI::HeaderColor);
+    textY += UI::LineHeight + UI::SectionSpacing;
     
-    // Vehicle Motion
-    DrawText("MOTION", textX, textY, fontSize - 4, DARKGRAY);
-    textY += lineHeight;
-    DrawText(TextFormat("Speed: %.2f km/h", car.speed * 3.6f), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Rotation: %.2f°", car.rotation * RAD2DEG), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Position: (%.1f, %.1f, %.1f)", 
-             car.position.x, car.position.y, car.position.z), textX, textY, fontSize, textColor);
-    textY += lineHeight;
+    // Motion section
+    textY = drawSection(textX, textY, "MOTION", {
+        [&](int x, int y) { DrawText(TextFormat("Speed: %.2f km/h", car.speed * 3.6f), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Rotation: %.2f°", car.rotation * RAD2DEG), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Position: (%.1f, %.1f, %.1f)", 
+                                    car.position.x, car.position.y, car.position.z), x, y, UI::FontSize, UI::TextColor); }
+    });
     
-    // Engine Data
-    textY += 5;
-    DrawText("ENGINE", textX, textY, fontSize - 4, DARKGRAY);
-    textY += lineHeight;
-    DrawText(TextFormat("Engine Speed: %.0f RPM", car.engineSpeed), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Engine Torque: %.1f Nm", 
-             car.getEngineTorque(car.throttle, car.engineSpeed)), textX, textY, fontSize, textColor);
-    textY += lineHeight;
+    // Engine section
+    textY = drawSection(textX, textY, "ENGINE", {
+        [&](int x, int y) { DrawText(TextFormat("Engine Speed: %.0f RPM", car.engineSpeed), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Engine Torque: %.1f Nm", 
+                                    car.getEngineTorque(car.throttle, car.engineSpeed)), x, y, UI::FontSize, UI::TextColor); }
+    });
     
-    // Controls
-    textY += 5;
-    DrawText("CONTROLS", textX, textY, fontSize - 4, DARKGRAY);
-    textY += lineHeight;
-    DrawText(TextFormat("Throttle: %.2f", car.throttle), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Brake: %.2f", car.brake), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Steering Angle: %.2f°", car.steeringAngle * RAD2DEG), textX, textY, fontSize, textColor);
-    textY += lineHeight;
+    // Controls section
+    textY = drawSection(textX, textY, "CONTROLS", {
+        [&](int x, int y) { DrawText(TextFormat("Throttle: %.2f", car.throttle), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Brake: %.2f", car.brake), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Steering Angle: %.2f°", car.steeringAngle * RAD2DEG), x, y, UI::FontSize, UI::TextColor); }
+    });
     
-    // Physics Data
-    textY += 5;
-    DrawText("PHYSICS", textX, textY, fontSize - 4, DARKGRAY);
-    textY += lineHeight;
-    DrawText(TextFormat("Accel X: %.2f m/s²", car.acceleration.x), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Velocity X: %.2f m/s", car.velocity.x), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Velocity Z: %.2f m/s", car.velocity.z), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Slip Ratio: %.3f", car.slipRatio), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Force Generated by Wheels: %.2f N", car.longitudinalForce), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Net Force on Car Body: %.2f N", car.netForce), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Drag Force: %.2f N", car.dragForce), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Rolling Resistance: %.2f N", car.rollingResistance), textX, textY, fontSize, textColor);
+    // Physics section
+    textY = drawSection(textX, textY, "PHYSICS", {
+        [&](int x, int y) { DrawText(TextFormat("Accel X: %.2f m/s²", car.acceleration.x), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Velocity X: %.2f m/s", car.velocity.x), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Velocity Z: %.2f m/s", car.velocity.z), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Slip Ratio: %.3f", car.slipRatio), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Force Generated by Wheels: %.2f N", car.longitudinalForce), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Net Force on Car Body: %.2f N", car.netForce), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Drag Force: %.2f N", car.dragForce), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Rolling Resistance: %.2f N", car.rollingResistance), x, y, UI::FontSize, UI::TextColor); }
+    });
+    
+    // Lateral dynamics section
+    textY = drawSection(textX, textY, "LATERAL DYNAMICS", {
+        [&](int x, int y) { DrawText(TextFormat("Lateral Velocity: %.2f m/s", car.lateralVelocity), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Yaw Rate: %.2f rad/s", car.yawRate), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Slip Angle Front: %.2f°", car.slipAngleFront * RAD2DEG), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Slip Angle Rear: %.2f°", car.slipAngleRear * RAD2DEG), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Lateral Force Front: %.2f N", car.lateralForceFront), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Lateral Force Rear: %.2f N", car.lateralForceRear), x, y, UI::FontSize, UI::TextColor); }
+    });
+}
 
-    textY += lineHeight;
-    DrawText(TextFormat("Lateral Velocity: %.2f m/s", car.lateralVelocity), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Yaw Rate: %.2f rad/s", car.yawRate), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Slip Angle Front: %.2f°", car.slipAngleFront * RAD2DEG), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Slip Angle Rear: %.2f°", car.slipAngleRear * RAD2DEG), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Lateral Force Front: %.2f N", car.lateralForceFront), textX, textY, fontSize, textColor);
-    textY += lineHeight;
-    DrawText(TextFormat("Lateral Force Rear: %.2f N", car.lateralForceRear), textX, textY, fontSize, textColor);
+void Renderer::drawInstructions() {
+    int screenHeight = GetScreenHeight();
     
-    // Draw instructions at the bottom left
-    DrawText("Controls: Arrow Keys - Up (throttle), Down (brake), Left/Right (steering)", 20, GetScreenHeight() - 40, 20, DARKGRAY);
-    DrawText("Press ESC to exit", 20, GetScreenHeight() - 20, 20, DARKGRAY);
+    // Draw instruction texts at the bottom of the screen
+    DrawText(
+        "Controls: Arrow Keys - Up (throttle), Down (brake), Left/Right (steering)", 
+        20, 
+        screenHeight - 40, 
+        20, 
+        UI::SectionColor
+    );
+    
+    DrawText(
+        "Press ESC to exit", 
+        20, 
+        screenHeight - 20, 
+        20, 
+        UI::SectionColor
+    );
+}
+
+int Renderer::drawSection(int x, int y, const char* title, 
+                         const std::vector<std::function<void(int, int)>>& drawFuncs) {
+    // Draw section header
+    DrawText(title, x, y, UI::SmallFontSize, UI::SectionColor);
+    y += UI::LineHeight;
+    
+    // Call each drawing function with the current position
+    for (const auto& drawFunc : drawFuncs) {
+        drawFunc(x, y);
+        y += UI::LineHeight;
+    }
+    
+    // Add spacing after the section
+    y += UI::SectionSpacing;
+    return y;
 }
 
 } // namespace CarGame

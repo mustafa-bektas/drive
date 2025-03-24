@@ -9,7 +9,6 @@ class Car;
 
 class CarPhysicsConfig {
 public:
-    // Constructor with sensible defaults
     CarPhysicsConfig(
         float width = 1.8f,
         float length = 4.5f,
@@ -51,27 +50,24 @@ public:
     float tireRadius;
     float inertiaAtEngine;
     float mass;
-    float corneringStiffnessFront; // Cornering stiffness for front tires
-    float corneringStiffnessRear;  // Cornering stiffness for rear tires
-    float pacejkaB_lat;            // Pacejka B parameter for lateral forces
-    float pacejkaC_lat;            // Pacejka C parameter for lateral forces
-    float pacejkaD_lat;            // Pacejka D parameter for lateral forces
-    float pacejkaE_lat;            // Pacejka E parameter for lateral forces
-    float frontWeight;             // Weight distribution towards the front
-    float normalLoadFront;         // Normal load on front tires
-    float normalLoadRear;          // Normal load on rear tires
-    float heightCG;               // Height of the center of gravity
+    float corneringStiffnessFront;
+    float corneringStiffnessRear;
+    float pacejkaB_lat;
+    float pacejkaC_lat;
+    float pacejkaD_lat;
+    float pacejkaE_lat;
+    float frontWeight;
+    float normalLoadFront;
+    float normalLoadRear;
+    float heightCG;
 };
-
 
 class Car {
 public:
     explicit Car(const Vector3& startPosition);
 
-    // Main update method
     void update(float deltaTime);
     
-    // Physics methods
     float getTotalResistanceForces(float deltaTime);
     void updateLongitudinalPhysics(float deltaTime);
     void updateLateralPhysics(float deltaTime);
@@ -81,40 +77,38 @@ public:
     float calculateSlipRatio(float wheelLinearSpeed, float vehicleSpeed) const;
     float calculatePacejkaLateral(float slipAngle, float Fz, bool isFrontTire) const;
 
-    // Car state
     Vector3 position;
     Vector3 velocity;
     Vector3 acceleration;
     float speed;
-    float rotation;  // in radians
-    float steeringAngle; // in radians
-    float steeringSpeed; // in radians per second
+    float rotation;
+    float steeringAngle;
+    float steeringSpeed;
     CarPhysicsConfig config;
     float engineSpeed;
     float engineSpeed_dot;
-    float throttle; // Throttle position (0.0 to 1.0)
-    float brake;    // Brake position (0.0 to 1.0)
+    float throttle;
+    float brake;
     float slipRatio;
     float longitudinalForce;
     float dragForce;
     float rollingResistance;
-    float wheelRotationSpeed; // in radians per second
+    float wheelRotationSpeed;
     bool clutch;
     float netForce;
 
-    // Lateral Dynamics
-    float slipAngleFront;  // Slip angle of front tires
-    float slipAngleRear;   // Slip angle of rear tires
-    float lateralForceFront; // Lateral force on front tires
-    float lateralForceRear;  // Lateral force on rear tires
-    float yawMoment;       // Yaw moment around center of gravity
-    float yawRate;         // Yaw rate (angular velocity)
-    float lateralVelocity; // Lateral velocity in car's reference frame
+    float slipAngleFront;
+    float slipAngleRear;
+    float lateralForceFront;
+    float lateralForceRear;
+    float yawMoment;
+    float yawRate;
+    float lateralVelocity;
     float sideSlipAngle;
     float sideSlipAngleDot;
     float yawAngle;
     float yawAngleDot;
-    float lateralAcceleration;     // Lateral acceleration (m/s²)
+    float lateralAcceleration;
     float yawAngleDotDot;
 };
 
