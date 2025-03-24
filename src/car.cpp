@@ -86,13 +86,13 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
     // Calculate engine torque based on updated engine speed
     float engineTorque = getEngineTorque(throttle, engineSpeed);
     
-    /* if (throttle < 0.1f && engineSpeed > 1000.0f) {
-        engineTorque -= (engineSpeed / 8000.0f) * 200.0f; // Engine braking increases with RPM
-    } */
+    if (throttle < 0.1f && engineSpeed > 1000.0f) {
+        engineTorque -= (engineSpeed / 8000.0f) * 20.0f; // Engine braking increases with RPM
+    }
 
     // Calculate wheel forces with updated engine speed
     float wheelTorque = engineTorque * config.gearRatio * 0.9f;
-    float wheelRotationSpeed = 0.0f;
+    static float wheelRotationSpeed = 0.0f;
 
     float speedMatchingRotation = speed / config.tireRadius;
 
@@ -167,6 +167,8 @@ float Car::getTotalResistanceForces(float deltaTime) {
     
     return dragForce + rollingResistance;
 }
+
+
 
 float Car::calculateTireForcePacejka(float slipRatio) const {
     // Pacejka parameters

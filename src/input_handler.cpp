@@ -18,11 +18,8 @@ void InputHandler::processThrottleAndBrake(Car& car, float deltaTime) {
         if (car.brake > 1.0f) car.brake = 1.0f;
     }
     else {
-        // Gradually reduce throttle and brake when no input
-        car.throttle -= 5.0f * deltaTime;
-        car.brake -= 5.0f * deltaTime;
-        if (car.throttle < 0.0f) car.throttle = 0.0f;
-        if (car.brake < 0.0f) car.brake = 0.0f;
+        car.throttle = 0.0f;
+        car.brake = 0.0f;
     }
 }
 
