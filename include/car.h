@@ -24,9 +24,17 @@ public:
         int gearRatio = 7,
         float tireRadius = 0.33f,
         float inertiaAtEngine = 0.45f,
-        int mass = 1600,
+        float mass = 1600,
         float corneringStiffnessFront = 50000.0f,
-        float corneringStiffnessRear = 40000.0f
+        float corneringStiffnessRear = 40000.0f,
+        float pacejkaB_lat = 10.0f,  
+        float pacejkaC_lat = 1.5f,    
+        float pacejkaD_lat = 1.0f,   
+        float pacejkaE_lat = -0.5,   
+        float frontWeight = 0.55f,    
+        float normalLoadFront = 4000.0f, 
+        float normalLoadRear = 3800.0f,  
+        float heightCG = 0.5f         
     );
 
     float width;
@@ -42,9 +50,17 @@ public:
     int gearRatio;
     float tireRadius;
     float inertiaAtEngine;
-    int mass;
+    float mass;
     float corneringStiffnessFront; // Cornering stiffness for front tires
     float corneringStiffnessRear;  // Cornering stiffness for rear tires
+    float pacejkaB_lat;            // Pacejka B parameter for lateral forces
+    float pacejkaC_lat;            // Pacejka C parameter for lateral forces
+    float pacejkaD_lat;            // Pacejka D parameter for lateral forces
+    float pacejkaE_lat;            // Pacejka E parameter for lateral forces
+    float frontWeight;             // Weight distribution towards the front
+    float normalLoadFront;         // Normal load on front tires
+    float normalLoadRear;          // Normal load on rear tires
+    float heightCG;               // Height of the center of gravity
 };
 
 
@@ -63,7 +79,7 @@ public:
     void normalizeRotation();
     float calculateTireForcePacejka(float slipRatio) const;
     float calculateSlipRatio(float wheelLinearSpeed, float vehicleSpeed) const;
-    float calculateTireForcePacejkaLateral(float slipAngle) const;
+    float calculatePacejkaLateral(float slipAngle, float Fz, bool isFrontTire) const;
 
     // Car state
     Vector3 position;
@@ -98,6 +114,7 @@ public:
     float sideSlipAngleDot;
     float yawAngle;
     float yawAngleDot;
+    float lateralAcceleration;     // Lateral acceleration (m/s²)
     float yawAngleDotDot;
 };
 
