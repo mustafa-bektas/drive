@@ -29,8 +29,8 @@ int main(int argc, char* argv[]) {
     }
     
     // Initialization
-    const int screenWidth = 1920;
-    const int screenHeight = 1080;
+    const int screenWidth = 1280;
+    const int screenHeight = 720;
     InitWindow(screenWidth, screenHeight, "Car Game - DQN Speed Control Demo");
     SetExitKey(KEY_NULL); // Disable default ESC key exit to handle it manually
     
