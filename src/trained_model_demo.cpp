@@ -50,7 +50,9 @@ int main(int argc, char* argv[]) {
     bool modelLoaded = agent.loadModel(modelFile);
     
     if (!modelLoaded) {
-        std::cout << "Failed to load model: " << modelFile << "\nWill run with random actions." << std::endl;
+        std::cout << "Failed to load model: " << modelFile << std::endl;
+        DrawText("Failed to load model!", 400, 300, 20, RED);
+        WaitTime(2.0); // Wait for 2 seconds to show the error
     } else {
         std::cout << "Successfully loaded model: " << modelFile << std::endl;
     }
@@ -67,7 +69,6 @@ int main(int argc, char* argv[]) {
     
     // Reset the environment
     std::vector<float> state = env.reset();
-    float totalReward = 0.0f;
     int step = 0;
     
     // Simulation control
@@ -102,7 +103,6 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_R)) {
             // Reset environment
             state = env.reset();
-            totalReward = 0.0f;
             step = 0;
             visualizer.reset();
         }
@@ -123,25 +123,16 @@ int main(int argc, char* argv[]) {
             
             for (int i = 0; i < stepsThisFrame; i++) {
                 // Select action using the trained model
-                DQNEnvironment::Action action;
-                
-                if (modelLoaded) {
-                    action = agent.selectAction(state, false); // No exploration during demo
-                } else {
-                    // Random action if model not loaded
-                    action = static_cast<DQNEnvironment::Action>(GetRandomValue(0, env.getActionSize() - 1));
-                }
+                DQNEnvironment::Action action = agent.selectAction(state);
                 
                 // Take a step in the environment
                 std::tuple<std::vector<float>, float, bool> result = env.step(action);
                 std::vector<float> nextState = std::get<0>(result);
-                float reward = std::get<1>(result);
                 bool done = std::get<2>(result);
                 
                 // Update visualization metrics
-                visualizer.updateMetrics(env.getCar(), reward, action, env.getTargetSpeed());
+                visualizer.updateSpeedHistory(env.getCar(), env.getTargetSpeed());
                 
-                totalReward += reward;
                 step++;
                 
                 // Update state
@@ -149,9 +140,10 @@ int main(int argc, char* argv[]) {
                 
                 // Reset if done
                 if (done) {
-                    printf("Episode completed. Steps: %d, Total Reward: %.2f\n", step, totalReward);
+                    printf("Episode completed. Steps: %d\n", step);
+                    
+                    // Reset for next episode
                     state = env.reset();
-                    totalReward = 0.0f;
                     step = 0;
                     visualizer.reset();
                 }
@@ -168,8 +160,8 @@ int main(int argc, char* argv[]) {
             // Draw 3D scene
             renderer.drawScene(camera, env.getCar(), floorPosition);
             
-            // Draw visualization UI (now more compact)
-            visualizer.drawUI(env.getCar(), totalReward, step, env.getTargetSpeed(), 
+            // Draw visualization UI
+            visualizer.drawUI(env.getCar(), env.getCar().speed, env.getTargetSpeed(), 
                             simulationSpeed, paused, modelLoaded);
             
         EndDrawing();

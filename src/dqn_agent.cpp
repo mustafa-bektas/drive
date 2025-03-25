@@ -20,18 +20,8 @@ DQNAgent::DQNAgent(Config config)
     network = std::make_unique<NeuralNetwork>(layerSizes);
 }
 
-DQNEnvironment::Action DQNAgent::selectAction(const std::vector<float>& state, bool explore) {
-    // Exploration is disabled in inference-only mode, but kept as parameter for compatibility
-    if (explore) {
-        // For demo purposes, you might want to occasionally explore
-        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-        if (dist(rng) < 0.05f) { // 5% exploration rate
-            std::uniform_int_distribution<int> actionDist(0, config.actionSize - 1);
-            return static_cast<DQNEnvironment::Action>(actionDist(rng));
-        }
-    }
-    
-    // Exploitation: select best action based on Q-values
+DQNEnvironment::Action DQNAgent::selectAction(const std::vector<float>& state) {
+    // Inference only - select best action based on Q-values
     return getBestAction(state);
 }
 

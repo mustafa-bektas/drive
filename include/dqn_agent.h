@@ -32,7 +32,7 @@ public:
     DQNAgent(Config config = Config());
     
     // Select an action based on current state
-    DQNEnvironment::Action selectAction(const std::vector<float>& state, bool explore = false);
+    DQNEnvironment::Action selectAction(const std::vector<float>& state);
     
     // Load model from file
     bool loadModel(const std::string& filename);

@@ -10,17 +10,18 @@
 namespace CarGame {
 
 /**
- * Helper class for visualizing the car simulation with smooth metrics
+ * Helper class for visualizing the car simulation 
+ * Focused on current metrics, not training history
  */
 class VisualizationHelper {
 public:
     VisualizationHelper(int historySize = 120);
     
-    // Update metrics (should be called each simulation step)
-    void updateMetrics(const Car& car, float reward, DQNEnvironment::Action action, float targetSpeed);
+    // Update speed history (for visualization)
+    void updateSpeedHistory(const Car& car, float targetSpeed);
     
     // Draw the visualization UI
-    void drawUI(const Car& car, float totalReward, int stepCount, float targetSpeed, 
+    void drawUI(const Car& car, float currentSpeed, float targetSpeed, 
                float simulationSpeed, bool paused, bool modelLoaded);
     
     // Reset metrics (call when resetting simulation)
@@ -30,15 +31,9 @@ public:
     void toggleUI();
     
 private:
-    // History tracking
+    // Speed history for graph
     std::deque<float> speedHistory;
-    std::deque<float> rewardHistory;
     std::deque<float> targetSpeedHistory;
-    std::deque<DQNEnvironment::Action> actionHistory;
-    
-    // Smoothed values
-    float smoothedSpeed;
-    float smoothedReward;
     
     // Config
     int historySize;
@@ -46,7 +41,7 @@ private:
     
     // Helper drawing methods
     void drawCompactInfoPanel(int x, int y, int width, int height, 
-                             const Car& car, float totalReward, int stepCount, 
+                             const Car& car, float currentSpeed, 
                              float targetSpeed, float simulationSpeed, bool paused, 
                              bool modelLoaded);
     void drawCompactSpeedGraph(int x, int y, int width, int height, float targetSpeed);
@@ -57,10 +52,6 @@ private:
     
     // Helper to get color based on value relative to target 
     Color getSpeedColor(float speed, float target);
-    
-    // Helper to draw a horizontal bar indicator
-    void drawBarIndicator(int x, int y, int width, int height, float value, 
-                          float minValue, float maxValue, Color color);
 };
 
 } // namespace CarGame
