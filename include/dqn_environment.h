@@ -54,6 +54,9 @@ public:
     
     // Get the current car for visualization
     const Car& getCar() const { return car; }
+
+    // Get the current car for modification (non-const version)
+    Car& getCar() { return car; }
     
     // Helper for visualization
     float getTargetSpeed() const { return config.targetSpeed; }

@@ -51,7 +51,87 @@ void VisualizationHelper::drawUI(const Car& car, float currentSpeed, float targe
     drawCompactSpeedGraph(10, screenHeight - 110, 280, 100, targetSpeed);
     
     // Draw help at the bottom
-    drawMinimalHelp(10, screenHeight - 25, "SPACE: Pause | R: Reset | UP/DOWN: Speed | TAB: Toggle UI | F: Fullscreen | ESC: Exit");
+    drawMinimalHelp(10, screenHeight - 25, "SPACE: Pause | R: Reset | PgUp/PgDn: Speed | L: Lane Keeping | TAB: Toggle UI | F: Fullscreen | ESC: Exit");
+}
+
+void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool laneKeepingActive) {
+    if (!showUI) {
+        return;
+    }
+    
+    int screenWidth = GetScreenWidth();
+    int screenHeight = GetScreenHeight();
+    
+    // Draw lane position info in the top-right corner
+    int panelWidth = 280;
+    int panelHeight = 120;
+    int x = screenWidth - panelWidth - 10;
+    int y = 10;
+    
+    // Background panel
+    DrawRectangle(x, y, panelWidth, panelHeight, Fade(LIGHTGRAY, 0.7f));
+    
+    // Title
+    Color titleColor = laneKeepingActive ? DARKGREEN : DARKBLUE;
+    DrawText("Lane Position", x + 10, y + 5, 16, titleColor);
+    
+    // Lane metrics
+    float lateralPosition = car.position.x;
+    float laneCenter = 0.0f;
+    float laneEdgeLeft = laneCenter - laneWidth/2;
+    float laneEdgeRight = laneCenter + laneWidth/2;
+    
+    // Text metrics
+    DrawText(TextFormat("Position: %.2f m", lateralPosition), x + 10, y + 30, 15, BLACK);
+    DrawText(TextFormat("Lane Width: %.1f m", laneWidth), x + 10, y + 50, 15, BLACK);
+    DrawText(TextFormat("Distance to Center: %.2f m", std::abs(lateralPosition - laneCenter)), 
+             x + 10, y + 70, 15, BLACK);
+    
+    // Lane status
+    const char* statusText;
+    Color statusColor;
+    
+    if (std::abs(lateralPosition) < 0.5f) {
+        statusText = "Status: CENTERED";
+        statusColor = DARKGREEN;
+    } else if (std::abs(lateralPosition) < laneWidth/2) {
+        statusText = "Status: IN LANE";
+        statusColor = BLUE;
+    } else {
+        statusText = "Status: OUT OF LANE";
+        statusColor = RED;
+    }
+    
+    DrawText(statusText, x + 10, y + 90, 15, statusColor);
+    
+    // Visual lane indicator
+    int indicatorY = y + panelHeight + 10;
+    int indicatorHeight = 30;
+    int indicatorWidth = panelWidth;
+    
+    // Lane background
+    DrawRectangle(x, indicatorY, indicatorWidth, indicatorHeight, LIGHTGRAY);
+    
+    // Lane markings
+    int laneLeft = x + indicatorWidth/2 - indicatorWidth/3;
+    int laneRight = x + indicatorWidth/2 + indicatorWidth/3;
+    
+    // Lane center and edges
+    DrawLine(x + indicatorWidth/2, indicatorY, x + indicatorWidth/2, indicatorY + indicatorHeight, 
+             Fade(DARKGRAY, 0.5f));
+    DrawRectangle(laneLeft, indicatorY, 5, indicatorHeight, WHITE);
+    DrawRectangle(laneRight, indicatorY, 5, indicatorHeight, WHITE);
+    
+    // Car position indicator
+    float normalizedPos = (lateralPosition - laneEdgeLeft) / laneWidth;
+    int carPosX = x + static_cast<int>(normalizedPos * indicatorWidth);
+    
+    DrawTriangle(
+        {static_cast<float>(carPosX), static_cast<float>(indicatorY)},
+        {static_cast<float>(carPosX - 10), static_cast<float>(indicatorY + indicatorHeight)},
+        {static_cast<float>(carPosX + 10), static_cast<float>(indicatorY + indicatorHeight)},
+        RED
+    );
 }
 
 void VisualizationHelper::drawCompactInfoPanel(int x, int y, int width, int height, 

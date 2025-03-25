@@ -60,19 +60,27 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         // Draw main ground plane
         DrawPlane(floorPosition, { groundSize, groundSize }, GREEN);
         
-        // Draw road
-        DrawCube({0, 0.01f, 0}, 10.0f, 0.01f, groundSize, DARKGRAY);
+        // Draw road with lane markers
+        const float roadWidth = 20.0f;
+        const float laneWidth = 10.0f;
         
-        // Draw road center line
+        // Main road surface
+        DrawCube({0, 0.01f, 0}, roadWidth, 0.01f, groundSize, DARKGRAY);
+        
+        // Lane center line (dashed)
         for (int i = -groundSize/2; i < groundSize/2; i += 5) {
-            DrawCube({0, 0.02f, float(i)}, 0.5f, 0.01f, 2.0f, WHITE);
+            DrawCube({0, 0.02f, float(i)}, 0.5f, 0.01f, 2.0f, YELLOW);
         }
         
-        // Draw road edges
-        DrawCube({-5.0f, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
-        DrawCube({5.0f, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
+        // Lane boundaries
+        DrawCube({-laneWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
+        DrawCube({laneWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
         
-        // Draw grid for visual reference
+        // Road edges
+        DrawCube({-roadWidth/2, 0.02f, 0}, 0.5f, 0.01f, groundSize, RED);
+        DrawCube({roadWidth/2, 0.02f, 0}, 0.5f, 0.01f, groundSize, RED);
+        
+        // Grid for visual reference
         for (int i = -gridSpacing; i <= gridSpacing; i++) {
             DrawLine3D(
                 {-groundSize/2, 0.01f, i * (groundSize/gridSpacing/2)},
@@ -89,7 +97,7 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         
         // Draw additional decorative elements
         // Trees on both sides of the road
-        for (int i = -groundSize/2; i <= groundSize/2; i += 10) {
+        for (int i = -groundSize/2; i <= groundSize/2; i += 20) {
             // Left side trees
             DrawCylinder({-15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
             DrawSphere({-15, 5.0f, float(i)}, 3.0f, DARKGREEN);

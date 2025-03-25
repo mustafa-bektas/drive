@@ -15,22 +15,21 @@ DQNEnvironment::DQNEnvironment(Config config)
 }
 
 std::vector<float> DQNEnvironment::reset() {
-    // Reset the car to initial state
-    car = Car(Vector3{0.0f, 0.5f, 0.0f});
+    // Reset to a random position within the lane
+    float laneWidth = 10.0f; // Match the lane width defined in rendering.cpp
+    float randomLateralPosition = ((float)rand() / RAND_MAX - 0.5f) * laneWidth * 0.8f;
+    
+    // Random initial rotation (slight heading variation)
+    float randomRotation = ((float)rand() / RAND_MAX - 0.5f) * 0.2f; // ±0.1 radians
+    
+    car = Car(Vector3{randomLateralPosition, 0.5f, 0.0f});
+    car.rotation = randomRotation;
     currentStep = 0;
     
-    // Reset control values
+    // Reset control values for NO_CHANGE action
     currentThrottle = 0.0f;
     currentBrake = 0.0f;
-    car.throttle = 0.0f;
-    car.brake = 0.0f;
     lastAction = COAST;
-    
-    // Add some randomization for better generalization
-    std::uniform_real_distribution<float> speedDist(0.0f, 5.0f);
-    float initialSpeed = speedDist(rng);
-    car.speed = initialSpeed;
-    car.velocity = {0.0f, 0.0f, initialSpeed};
     
     return getState();
 }

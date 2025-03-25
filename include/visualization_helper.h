@@ -24,6 +24,9 @@ public:
     void drawUI(const Car& car, float currentSpeed, float targetSpeed, 
                float simulationSpeed, bool paused, bool modelLoaded);
     
+    // Draw lane keeping information
+    void drawLaneInfo(const Car& car, float laneWidth, bool laneKeepingActive);
+    
     // Reset metrics (call when resetting simulation)
     void reset();
     

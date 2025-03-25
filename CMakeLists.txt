@@ -27,6 +27,8 @@ set(COMMON_SOURCES
     src/camera.cpp
     src/rendering.cpp
     src/input_handler.cpp
+    src/lane_keeping_environment.cpp
+    src/lane_keeping_agent.cpp
 )
 
 # Add main executable - using trained_model_demo as the main program
