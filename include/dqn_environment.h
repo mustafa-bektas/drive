@@ -21,7 +21,7 @@ public:
         // Constructor with default values
         Config() 
             : targetSpeed(50.0f / 3.6f),
-              maxEpisodeSteps(300),
+              maxEpisodeSteps(1000),
               speedRewardThreshold(1.0f),
               timeStep(1.0f / 60.0f),
               actionSpace(9)

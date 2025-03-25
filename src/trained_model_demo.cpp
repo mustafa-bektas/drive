@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     // Create environment
     DQNEnvironment::Config envConfig;
     envConfig.targetSpeed = targetSpeed;
-    envConfig.maxEpisodeSteps = 600;
+    envConfig.maxEpisodeSteps = 1000;
     
     DQNEnvironment env(envConfig);
     
