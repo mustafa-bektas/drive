@@ -174,24 +174,7 @@ void Renderer::drawTelemetryPanel(const Car& car) {
 }
 
 void Renderer::drawInstructions() {
-    int screenHeight = GetScreenHeight();
     
-    // Draw instruction texts at the bottom of the screen
-    DrawText(
-        "Controls: Arrow Keys - Up (throttle), Down (brake), Left/Right (steering)", 
-        20, 
-        screenHeight - 40, 
-        20, 
-        UI::SectionColor
-    );
-    
-    DrawText(
-        "Press ESC to exit", 
-        20, 
-        screenHeight - 20, 
-        20, 
-        UI::SectionColor
-    );
 }
 
 int Renderer::drawSection(int x, int y, const char* title, 
