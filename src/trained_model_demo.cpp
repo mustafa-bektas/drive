@@ -15,8 +15,9 @@ using namespace CarGame;
 
 int main(int argc, char* argv[]) {
     // Parse command line arguments
-    std::string modelFile = "models/best_model_for_cpp.txt";
+    std::string modelFile = "models/lane_following_model_for_cpp.txt";
     float targetSpeed = 50.0f / 3.6f;  // 50 km/h in m/s
+    float laneWidth = 4.0f;  // Default lane width in meters
     
     // Process command line arguments
     for (int i = 1; i < argc; i++) {
@@ -25,19 +26,24 @@ int main(int argc, char* argv[]) {
             modelFile = argv[++i];
         } else if (arg == "--target-speed" && i + 1 < argc) {
             targetSpeed = std::stof(argv[++i]) / 3.6f;  // Convert km/h to m/s
+        } else if (arg == "--lane-width" && i + 1 < argc) {
+            laneWidth = std::stof(argv[++i]);
         }
     }
     
     // Initialization
     const int screenWidth = 1280;
     const int screenHeight = 720;
-    InitWindow(screenWidth, screenHeight, "Car Game - DQN Speed Control Demo");
+    InitWindow(screenWidth, screenHeight, "Car Game - DQN Speed & Lane Control Demo");
     SetExitKey(KEY_NULL); // Disable default ESC key exit to handle it manually
     
     // Create environment
     DQNEnvironment::Config envConfig;
     envConfig.targetSpeed = targetSpeed;
-    envConfig.maxEpisodeSteps = 1000;
+    envConfig.maxEpisodeSteps = 10000;  // Longer episodes for lane following
+    envConfig.laneWidth = laneWidth;
+    envConfig.maxLateralDeviation = 2.5f;  // Terminate if car deviates too far
+    envConfig.lateralDeviationPenalty = 1.0f;  // Penalty factor for lane deviation
     
     DQNEnvironment env(envConfig);
     
@@ -45,6 +51,8 @@ int main(int argc, char* argv[]) {
     DQNAgent::Config agentConfig;
     agentConfig.stateSize = env.getStateSize();
     agentConfig.actionSize = env.getActionSize();
+    agentConfig.hiddenSize1 = 128;  // Larger network for lane following
+    agentConfig.hiddenSize2 = 64;
     
     DQNAgent agent(agentConfig);
     bool modelLoaded = agent.loadModel(modelFile);
@@ -116,6 +124,9 @@ int main(int argc, char* argv[]) {
             visualizer.toggleUI();
         }
         
+        // Get lane deviation for visualization
+        float lateralDeviation = env.getLateralDeviation();
+        
         // Run simulation if not paused
         if (!paused) {
             // Multiple simulation steps based on simulation speed
@@ -132,13 +143,14 @@ int main(int argc, char* argv[]) {
                 
                 // Update visualization metrics
                 visualizer.updateSpeedHistory(env.getCar(), env.getTargetSpeed());
+                visualizer.updateLaneHistory(env.getCar(), lateralDeviation, envConfig.laneWidth);
                 
                 step++;
                 
                 // Update state
                 state = nextState;
                 
-                // Reset if done
+                // Reset if done (off the lane or episode limit reached)
                 if (done) {
                     printf("Episode completed. Steps: %d\n", step);
                     
@@ -162,6 +174,7 @@ int main(int argc, char* argv[]) {
             
             // Draw visualization UI
             visualizer.drawUI(env.getCar(), env.getCar().speed, env.getTargetSpeed(), 
+                            lateralDeviation, envConfig.laneWidth,
                             simulationSpeed, paused, modelLoaded);
             
         EndDrawing();

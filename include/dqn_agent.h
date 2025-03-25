@@ -19,13 +19,15 @@ public:
         int actionSize;             // Number of possible actions
         int hiddenSize1;            // First hidden layer size
         int hiddenSize2;            // Second hidden layer size
+        int hiddenSize3;            // Third hidden layer size (optional, for larger networks)
 
         // Constructor with default values
         Config()
-            : stateSize(6),
-              actionSize(9),
-              hiddenSize1(64),
-              hiddenSize2(32)
+            : stateSize(9),         // Expanded state size for lane following
+              actionSize(27),       // Expanded action space for steering
+              hiddenSize1(128),     // Larger hidden layer for more complex behavior
+              hiddenSize2(64),      // Larger second hidden layer
+              hiddenSize3(0)        // Optional third layer (0 means not used)
         {}
     };
     

@@ -61,16 +61,26 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         DrawPlane(floorPosition, { groundSize, groundSize }, GREEN);
         
         // Draw road
-        DrawCube({0, 0.01f, 0}, 10.0f, 0.01f, groundSize, DARKGRAY);
+        const float laneWidth = 4.0f;  // Lane width in meters
+        const float roadWidth = 10.0f; // Total road width
         
-        // Draw road center line
+        // Main road surface
+        DrawCube({0, 0.01f, 0}, roadWidth, 0.01f, groundSize, DARKGRAY);
+        
+        // Draw lane markings
+        // Center line (broken)
         for (int i = -groundSize/2; i < groundSize/2; i += 5) {
-            DrawCube({0, 0.02f, float(i)}, 0.5f, 0.01f, 2.0f, WHITE);
+            DrawCube({0, 0.02f, float(i)}, 0.2f, 0.01f, 2.0f, YELLOW);
         }
         
-        // Draw road edges
-        DrawCube({-5.0f, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
-        DrawCube({5.0f, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
+        // Lane boundaries (solid lines)
+        const float laneHalfWidth = laneWidth / 2.0f;
+        DrawCube({-laneHalfWidth, 0.02f, 0}, 0.15f, 0.01f, groundSize, WHITE);
+        DrawCube({laneHalfWidth, 0.02f, 0}, 0.15f, 0.01f, groundSize, WHITE);
+        
+        // Road edges
+        DrawCube({-roadWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
+        DrawCube({roadWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
         
         // Draw grid for visual reference
         for (int i = -gridSpacing; i <= gridSpacing; i++) {
@@ -89,12 +99,12 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         
         // Draw additional decorative elements
         // Trees on both sides of the road
-        for (int i = -groundSize/2; i <= groundSize/2; i += 10) {
-            // Left side trees
+        for (int i = -groundSize/2; i <= groundSize/2; i += 20) {
+            // Left side trees (further from road edge)
             DrawCylinder({-15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
             DrawSphere({-15, 5.0f, float(i)}, 3.0f, DARKGREEN);
             
-            // Right side trees
+            // Right side trees (further from road edge)
             DrawCylinder({15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
             DrawSphere({15, 5.0f, float(i)}, 3.0f, DARKGREEN);
         }
@@ -108,6 +118,42 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             { 1.0f, 1.0f, 1.0f },
             MAROON
         );
+        
+        // Draw lane deviation helper (optional)
+        // Draw a vertical line from the car to show its deviation from lane center
+        if (std::abs(car.position.x) > 0.1f) {  // Only draw if there's significant deviation
+            Color deviationColor = car.position.x > 0 ? RED : BLUE;
+            DrawLine3D(
+                {0.0f, 0.02f, car.position.z},
+                {car.position.x, 0.02f, car.position.z},
+                Fade(deviationColor, 0.7f)
+            );
+        }
+        
+        // Draw car's trajectory prediction (based on current steering and velocity)
+        const int predictionSteps = 20;
+        const float predictionTimeStep = 0.1f;
+        
+        Vector3 predPos = car.position;
+        float predRotation = car.rotation;
+        float predSpeed = car.speed;
+        
+        // Simple steering model for prediction
+        for (int i = 0; i < predictionSteps; i++) {
+            // Update prediction based on current steering and speed
+            if (std::abs(predSpeed) > 0.5f) {
+                float turnRate = car.steeringAngle * predSpeed / car.config.wheelBase;
+                predRotation += turnRate * predictionTimeStep;
+            }
+            
+            // Update position
+            predPos.x += predSpeed * std::sin(predRotation) * predictionTimeStep;
+            predPos.z += predSpeed * std::cos(predRotation) * predictionTimeStep;
+            
+            // Draw prediction point
+            float alpha = 1.0f - (float)i / predictionSteps;
+            DrawSphere(predPos, 0.1f, Fade(GREEN, alpha));
+        }
     EndMode3D();
 }
 
@@ -164,7 +210,8 @@ void Renderer::drawTelemetryPanel(const Car& car) {
     
     // Lateral dynamics section
     textY = drawSection(textX, textY, "LATERAL DYNAMICS", {
-        [&](int x, int y) { DrawText(TextFormat("Lateral Velocity: %.2f m/s", car.lateralVelocity), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Lateral Position: %.2f m", car.position.x), x, y, UI::FontSize, UI::TextColor); },
+        [&](int x, int y) { DrawText(TextFormat("Lateral Velocity: %.2f m/s", car.velocity.x), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Yaw Rate: %.2f rad/s", car.yawRate), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Slip Angle Front: %.2f°", car.slipAngleFront * RAD2DEG), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Slip Angle Rear: %.2f°", car.slipAngleRear * RAD2DEG), x, y, UI::FontSize, UI::TextColor); },
