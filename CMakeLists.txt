@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.14)
 project(CarGame)
 
 # Set C++ standard
@@ -17,7 +17,7 @@ if (NOT raylib_FOUND)
     FetchContent_MakeAvailable(raylib)
 endif()
 
-# Common source files (used by both graphical and headless versions)
+# Common source files
 set(COMMON_SOURCES
     src/car.cpp
     src/dqn_environment.cpp
@@ -30,36 +30,35 @@ set(GRAPHICAL_SOURCES
     src/camera.cpp
     src/rendering.cpp
     src/input_handler.cpp
-    src/dqn_visualizer.cpp
 )
 
-# Headless training source files
-set(HEADLESS_SOURCES
-    src/headless_training.cpp
+# Add main executable
+add_executable(${PROJECT_NAME} 
+    src/main.cpp
+    ${COMMON_SOURCES} 
+    ${GRAPHICAL_SOURCES}
 )
 
-add_executable(CarGameDemo src/trained_model_demo.cpp ${COMMON_SOURCES} ${GRAPHICAL_SOURCES})
-target_include_directories(CarGameDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(CarGameDemo raylib)
-
-# Add graphical executable
-add_executable(${PROJECT_NAME} ${COMMON_SOURCES} ${GRAPHICAL_SOURCES})
-
-# Add headless training executable
-add_executable(${PROJECT_NAME}_headless ${COMMON_SOURCES} ${HEADLESS_SOURCES})
+# Add trained model demo executable
+add_executable(TrainedModelDemo 
+    src/trained_model_demo.cpp
+    ${COMMON_SOURCES} 
+    ${GRAPHICAL_SOURCES}
+)
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(${PROJECT_NAME}_headless PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(TrainedModelDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Link against Raylib for the graphical version
+# Link against Raylib
 target_link_libraries(${PROJECT_NAME} raylib)
-target_link_libraries(${PROJECT_NAME}_headless raylib)
+target_link_libraries(TrainedModelDemo raylib)
 
-# Headless version doesn't need Raylib
-# Add any system libraries if needed
+# System-specific libraries
 if(APPLE)
-    target_link_libraries(${PROJECT_NAME}_headless "-framework Cocoa")
+    target_link_libraries(${PROJECT_NAME} "-framework Cocoa")
+    target_link_libraries(TrainedModelDemo "-framework Cocoa")
 elseif(UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME}_headless pthread m dl)
+    target_link_libraries(${PROJECT_NAME} pthread m dl)
+    target_link_libraries(TrainedModelDemo pthread m dl)
 endif()
