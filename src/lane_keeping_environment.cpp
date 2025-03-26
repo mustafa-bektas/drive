@@ -136,7 +136,7 @@ float LaneKeepingEnvironment::calculateReward(const std::vector<float>& state, A
     float reward = 0.0f;
     
     // Reward for staying in the center of the lane
-    float centeringReward = std::exp(-2.0f * std::abs(lateralPosition));
+    float centeringReward = std::exp(-5.0f * std::abs(lateralPosition));
     reward += centeringReward * 2.0f;
     
     // Reward for aligning with the lane direction

@@ -24,8 +24,8 @@ public:
         Config()
             : stateSize(5),
               actionSize(7),
-              hiddenSize1(64),
-              hiddenSize2(32)
+              hiddenSize1(128),
+              hiddenSize2(64)
         {}
     };
     

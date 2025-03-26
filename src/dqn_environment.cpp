@@ -17,7 +17,7 @@ DQNEnvironment::DQNEnvironment(Config config)
 std::vector<float> DQNEnvironment::reset() {
     // Reset to a random position within the lane
     float laneWidth = 10.0f; // Match the lane width defined in rendering.cpp
-    float randomLateralPosition = ((float)rand() / RAND_MAX - 0.5f) * laneWidth * 1.02f;
+    float randomLateralPosition = ((float)rand() / RAND_MAX - 0.5f) * laneWidth * 0.9f;
     
     // Random initial rotation (slight heading variation)
     float randomRotation = ((float)rand() / RAND_MAX - 0.5f) * 0.2f; // ±0.1 radians
