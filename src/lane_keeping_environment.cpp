@@ -15,15 +15,14 @@ LaneKeepingEnvironment::LaneKeepingEnvironment(Config config)
 }
 
 std::vector<float> LaneKeepingEnvironment::reset(const Car& carRef) {
-    // We don't create a new car in LaneKeepingEnvironment to avoid
-    // overriding the car from DQNEnvironment, but we still need to
-    // reset our internal state based on the car's new position
+    // don't create new car here to avoid overriding
+    // dqn car - just reset internal state
     
-    // Reset internal state
+    // reset internal state
     currentStep = 0;
     lastAction = MAINTAIN_STEERING;
     
-    // Reset lane position metrics
+    // reset lane metrics
     lateralPosition = getLateralPosition(carRef);
     headingError = getHeadingError(carRef);
     lateralVelocity = 0.0f;
@@ -34,53 +33,52 @@ std::vector<float> LaneKeepingEnvironment::reset(const Car& carRef) {
 std::tuple<std::vector<float>, float, bool> LaneKeepingEnvironment::step(Action action, Car& car) {
     currentStep++;
     
-    // Apply steering adjustment based on action
+    // apply steering adjustment
     float steeringAdjustment = actionToSteeringAdjustment(action);
     
-    // Add a steering return-to-center effect (natural steering behavior)
-    // Only apply this when not actively steering hard
+    // return-to-center effect
     if (action == MAINTAIN_STEERING) {
-        // Return to center at 30% rate per step
+        // 30% return rate per step
         car.steeringAngle *= 0.7f;
     } else {
         car.steeringAngle += steeringAdjustment;
     }
     
-    // Limit steering angle to the car's configuration limits
+    // limit steering angle
     if (car.steeringAngle > car.config.maxSteeringAngle) {
         car.steeringAngle = car.config.maxSteeringAngle;
     } else if (car.steeringAngle < -car.config.maxSteeringAngle) {
         car.steeringAngle = -car.config.maxSteeringAngle;
     }
     
-    // Update lane position metrics
+    // update lane metrics
     lateralPosition = getLateralPosition(car);
     headingError = getHeadingError(car);
     
-    // Calculate lateral velocity (change in lateral position)
+    // get lateral velocity
     lateralVelocity = car.lateralVelocity;
     
-    // Get new state
+    // get new state
     std::vector<float> state = getState(car);
     
-    // Calculate reward
+    // calc reward
     float reward = calculateReward(state, action, car);
     
-    // Check for episode termination conditions
+    // check termination
     bool done = false;
     
-    // Terminate if car leaves the lane by too much
+    // terminate if out of lane
     if (std::abs(lateralPosition) > config.maxLateralDeviation) {
         done = true;
-        reward -= 10.0f; // Extra penalty for leaving the lane
+        reward -= 10.0f; // penalty for leaving lane
     }
     
-    // Terminate after max steps
+    // terminate after max steps
     if (currentStep >= config.maxEpisodeSteps) {
         done = true;
     }
     
-    // Store last action for next reward calculation
+    // save last action for reward
     lastAction = action;
     
     return std::make_tuple(state, reward, done);
@@ -113,19 +111,19 @@ float LaneKeepingEnvironment::actionToSteeringAdjustment(Action action) {
 std::vector<float> LaneKeepingEnvironment::getState(const Car& car) {
     std::vector<float> state(5);
     
-    // Lateral position from lane center (normalized by lane width)
+    // lat pos from center (normalized by lane width)
     state[0] = lateralPosition / (config.laneWidth / 2.0f);
     
-    // Heading error (normalized)
-    state[1] = headingError / 1.0f;  // Normalized by a typical range of ±1 radian
+    // heading err (normalized)
+    state[1] = headingError / 1.0f;  // normalized by +-1 rad range
     
-    // Lateral velocity (normalized)
-    state[2] = lateralVelocity / 5.0f;  // Normalized by typical max lateral velocity
+    // lat velocity (normalized)
+    state[2] = lateralVelocity / 5.0f;  // typical max lat vel
     
-    // Current steering angle (normalized by max steering angle)
+    // steering angle (normalized by max)
     state[3] = car.steeringAngle / car.config.maxSteeringAngle;
     
-    // Distance to nearest lane boundary (normalized by lane width)
+    // distance to lane edge (normalized)
     float distanceToBoundary = (config.laneWidth / 2.0f) - std::abs(lateralPosition);
     state[4] = distanceToBoundary / (config.laneWidth / 2.0f);
     
@@ -135,15 +133,15 @@ std::vector<float> LaneKeepingEnvironment::getState(const Car& car) {
 float LaneKeepingEnvironment::calculateReward(const std::vector<float>& state, Action action, const Car& car) {
     float reward = 0.0f;
     
-    // Reward for staying in the center of the lane
+    // reward for center
     float centeringReward = std::exp(-5.0f * std::abs(lateralPosition));
     reward += centeringReward * 2.0f;
     
-    // Reward for aligning with the lane direction
-    float alignmentReward = 1.0f - std::abs(state[1]);  // 1.0 when aligned, 0.0 at ±1 radian
+    // reward for alignment
+    float alignmentReward = 1.0f - std::abs(state[1]);  // 1.0 when aligned
     reward += alignmentReward;
     
-    // Penalize abrupt steering changes
+    // penalize abrupt steering
     if (lastAction != action && 
         action != MAINTAIN_STEERING && 
         lastAction != MAINTAIN_STEERING) {
@@ -153,7 +151,7 @@ float LaneKeepingEnvironment::calculateReward(const std::vector<float>& state, A
         }
     }
     
-    // Penalize excessive steering angles
+    // penalize extreme steering
     float steeringRatio = std::abs(car.steeringAngle / car.config.maxSteeringAngle);
     if (steeringRatio > 0.8f) {
         reward -= 0.5f * (steeringRatio - 0.8f) / 0.2f;
@@ -163,17 +161,15 @@ float LaneKeepingEnvironment::calculateReward(const std::vector<float>& state, A
 }
 
 float LaneKeepingEnvironment::getLateralPosition(const Car& car) const {
-    // In the current implementation, the lane is centered at x=0
-    // and extends along the z-axis
+    // lane centered at x=0 along z-axis
     return car.position.x;
 }
 
 float LaneKeepingEnvironment::getHeadingError(const Car& car) const {
-    // Lane direction is along the z-axis, so error is the difference
-    // between car rotation and 0 (or PI, depending on direction)
-    float laneDirection = 0.0f;  // Lane points along z-axis
+    // lane direction along z-axis (0 rad)
+    float laneDirection = 0.0f;
     
-    // Calculate heading error, normalizing to range [-PI, PI]
+    // heading error normalized to [-PI, PI]
     float error = car.rotation - laneDirection;
     while (error > PI) error -= 2.0f * PI;
     while (error < -PI) error += 2.0f * PI;
@@ -182,7 +178,7 @@ float LaneKeepingEnvironment::getHeadingError(const Car& car) const {
 }
 
 float LaneKeepingEnvironment::getLateralVelocity(const Car& car) const {
-    // The x-component of velocity represents lateral movement
+    // x velocity = lateral movement
     return car.velocity.x;
 }
 

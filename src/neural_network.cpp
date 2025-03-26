@@ -9,17 +9,17 @@ NeuralNetwork::NeuralNetwork(const std::vector<int>& layerSizes) {
         throw std::invalid_argument("Network must have at least 2 layers");
     }
     
-    // Create hidden layers with ReLU activation
+    // hidden layers with relu
     for (size_t i = 0; i < layerSizes.size() - 2; ++i) {
         layers.emplace_back(layerSizes[i], layerSizes[i + 1], relu);
     }
     
-    // Create output layer with linear activation
+    // output layer with linear activation
     layers.emplace_back(layerSizes[layerSizes.size() - 2], 
                         layerSizes[layerSizes.size() - 1], 
                         linear);
     
-    // Initialize weights
+    // init weights
     initializeWeights();
 }
 
@@ -31,18 +31,18 @@ void NeuralNetwork::initializeWeights(unsigned int seed) {
         int inputSize = layer.weights[0].size();
         int outputSize = layer.weights.size();
         
-        // Xavier initialization
+        // xavier init
         float scale = std::sqrt(6.0f / (inputSize + outputSize));
         std::uniform_real_distribution<float> dist(-scale, scale);
         
-        // Initialize weights
+        // init weights
         for (auto& neuron : layer.weights) {
             for (auto& weight : neuron) {
                 weight = dist(rng);
             }
         }
         
-        // Initialize biases to small values
+        // small bias values
         for (auto& bias : layer.biases) {
             bias = dist(rng) * 0.1f;
         }
@@ -130,10 +130,10 @@ std::vector<int> NeuralNetwork::getLayerSizes() const {
     std::vector<int> sizes;
     
     if (!layers.empty()) {
-        // Input layer size
+        // input layer size
         sizes.push_back(layers[0].weights[0].size());
         
-        // Hidden and output layers
+        // hidden/output layers
         for (const auto& layer : layers) {
             sizes.push_back(layer.weights.size());
         }

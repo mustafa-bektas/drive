@@ -9,7 +9,7 @@ void InputHandler::processInput(Car& car, float deltaTime) {
 }
 
 void InputHandler::processThrottleAndBrake(Car& car, float deltaTime) {
-    // Handle throttle and brake input
+    // handle throttle/brake
     if (IsKeyDown(KEY_UP)) {
         car.throttle += 3.0f * deltaTime;
         if (car.throttle > 1.0f) car.throttle = 1.0f; 
@@ -24,7 +24,7 @@ void InputHandler::processThrottleAndBrake(Car& car, float deltaTime) {
 }
 
 void InputHandler::processSteering(Car& car, float deltaTime) {
-    // Only process steering if car is moving fast enough
+    // only steer if moving fast enough
     if (std::fabs(car.speed) > car.config.minMovementSpeed) {
         if (IsKeyDown(KEY_LEFT)) {
             car.steeringSpeed = car.config.steeringSpeed * deltaTime;
@@ -38,7 +38,7 @@ void InputHandler::processSteering(Car& car, float deltaTime) {
             if (car.steeringAngle < -car.config.maxSteeringAngle) 
                 car.steeringAngle = -car.config.maxSteeringAngle;
         } else {
-            // Gradually reduce steering angle when no input
+            // return to center when no input
             float returnSpeed = car.config.steeringSpeed * deltaTime;
             
             if (car.steeringAngle > 0.0f) {

@@ -7,7 +7,7 @@
 
 namespace CarGame {
 
-// UI constants
+// ui stuff
 namespace UI {
     constexpr int FontSize = 20;
     constexpr int SmallFontSize = 16;
@@ -34,7 +34,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initialize(const Car& car) {
-    // Create car model
+    // make car model from cube
     carModel = LoadModelFromMesh(GenMeshCube(
         car.config.width, 
         car.config.height, 
@@ -49,7 +49,7 @@ void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3
 }
 
 void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition) {
-    // Set a nice background color gradient manually
+    // nice sky background
     DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), 
                           SKYBLUE, DARKBLUE);
     
@@ -57,30 +57,30 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         const float groundSize = 500.0f;
         const int gridSpacing = 10;
         
-        // Draw main ground plane
+        // ground plane
         DrawPlane(floorPosition, { groundSize, groundSize }, GREEN);
         
-        // Draw road with lane markers
+        // road with lanes
         const float roadWidth = 20.0f;
         const float laneWidth = 10.0f;
         
-        // Main road surface
+        // road surface
         DrawCube({0, 0.01f, 0}, roadWidth, 0.01f, groundSize, DARKGRAY);
         
-        // Lane center line (dashed)
+        // lane center (dashed)
         for (int i = -groundSize/2; i < groundSize/2; i += 5) {
             DrawCube({0, 0.02f, float(i)}, 0.5f, 0.01f, 2.0f, YELLOW);
         }
         
-        // Lane boundaries
+        // lane edges
         DrawCube({-laneWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
         DrawCube({laneWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
         
-        // Road edges
+        // road edges
         DrawCube({-roadWidth/2, 0.02f, 0}, 0.5f, 0.01f, groundSize, RED);
         DrawCube({roadWidth/2, 0.02f, 0}, 0.5f, 0.01f, groundSize, RED);
         
-        // Grid for visual reference
+        // grid for reference
         for (int i = -gridSpacing; i <= gridSpacing; i++) {
             DrawLine3D(
                 {-groundSize/2, 0.01f, i * (groundSize/gridSpacing/2)},
@@ -95,19 +95,18 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             );
         }
         
-        // Draw additional decorative elements
-        // Trees on both sides of the road
+        // trees on road sides
         for (int i = -groundSize/2; i <= groundSize/2; i += 20) {
-            // Left side trees
+            // left trees
             DrawCylinder({-15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
             DrawSphere({-15, 5.0f, float(i)}, 3.0f, DARKGREEN);
             
-            // Right side trees
+            // right trees
             DrawCylinder({15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
             DrawSphere({15, 5.0f, float(i)}, 3.0f, DARKGREEN);
         }
         
-        // Draw the car model
+        // draw car
         DrawModelEx(
             carModel, 
             car.position, 
@@ -123,7 +122,7 @@ void Renderer::drawTelemetryPanel(const Car& car) {
     int textX = UI::GetRightPanelX();
     int textY = 20;
     
-    // Draw panel background
+    // panel bg
     DrawRectangle(
         textX - UI::PanelMargin, 
         textY - UI::PanelMargin, 
@@ -132,11 +131,11 @@ void Renderer::drawTelemetryPanel(const Car& car) {
         UI::PanelColor
     );
     
-    // Panel title
+    // title
     DrawText("CAR TELEMETRY", textX, textY, UI::FontSize, UI::HeaderColor);
     textY += UI::LineHeight + UI::SectionSpacing;
     
-    // Motion section
+    // motion section
     textY = drawSection(textX, textY, "MOTION", {
         [&](int x, int y) { DrawText(TextFormat("Speed: %.2f km/h", car.speed * 3.6f), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Rotation: %.2f°", car.rotation * RAD2DEG), x, y, UI::FontSize, UI::TextColor); },
@@ -144,21 +143,21 @@ void Renderer::drawTelemetryPanel(const Car& car) {
                                     car.position.x, car.position.y, car.position.z), x, y, UI::FontSize, UI::TextColor); }
     });
     
-    // Engine section
+    // engine section
     textY = drawSection(textX, textY, "ENGINE", {
         [&](int x, int y) { DrawText(TextFormat("Engine Speed: %.0f RPM", car.engineSpeed), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Engine Torque: %.1f Nm", 
                                     car.getEngineTorque(car.throttle, car.engineSpeed)), x, y, UI::FontSize, UI::TextColor); }
     });
     
-    // Controls section
+    // controls section
     textY = drawSection(textX, textY, "CONTROLS", {
         [&](int x, int y) { DrawText(TextFormat("Throttle: %.2f", car.throttle), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Brake: %.2f", car.brake), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Steering Angle: %.2f°", car.steeringAngle * RAD2DEG), x, y, UI::FontSize, UI::TextColor); }
     });
     
-    // Physics section
+    // physics section
     textY = drawSection(textX, textY, "PHYSICS", {
         [&](int x, int y) { DrawText(TextFormat("Accel X: %.2f m/s²", car.acceleration.x), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Velocity X: %.2f m/s", car.velocity.x), x, y, UI::FontSize, UI::TextColor); },
@@ -170,7 +169,7 @@ void Renderer::drawTelemetryPanel(const Car& car) {
         [&](int x, int y) { DrawText(TextFormat("Rolling Resistance: %.2f N", car.rollingResistance), x, y, UI::FontSize, UI::TextColor); }
     });
     
-    // Lateral dynamics section
+    // lateral dynamics
     textY = drawSection(textX, textY, "LATERAL DYNAMICS", {
         [&](int x, int y) { DrawText(TextFormat("Lateral Velocity: %.2f m/s", car.lateralVelocity), x, y, UI::FontSize, UI::TextColor); },
         [&](int x, int y) { DrawText(TextFormat("Yaw Rate: %.2f rad/s", car.yawRate), x, y, UI::FontSize, UI::TextColor); },
@@ -187,17 +186,17 @@ void Renderer::drawInstructions() {
 
 int Renderer::drawSection(int x, int y, const char* title, 
                          const std::vector<std::function<void(int, int)>>& drawFuncs) {
-    // Draw section header
+    // section header
     DrawText(title, x, y, UI::SmallFontSize, UI::SectionColor);
     y += UI::LineHeight;
     
-    // Call each drawing function with the current position
+    // call each drawing function with current pos
     for (const auto& drawFunc : drawFuncs) {
         drawFunc(x, y);
         y += UI::LineHeight;
     }
     
-    // Add spacing after the section
+    // spacing after section
     y += UI::SectionSpacing;
     return y;
 }

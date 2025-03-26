@@ -10,15 +10,15 @@ namespace CarGame {
 
 class DQNEnvironment {
 public:
-    // Configuration for the RL environment
+    // rl env config
     struct Config {
-        float targetSpeed;        // Target speed in m/s (50 km/h)
-        float maxEpisodeSteps;    // Maximum steps per episode
-        float speedRewardThreshold; // Speed difference threshold for max reward
-        float timeStep;           // Simulation time step
-        int actionSpace;          // Number of discrete actions
+        float targetSpeed;        // target in m/s
+        float maxEpisodeSteps;    // max steps per episode
+        float speedRewardThreshold; // threshold for max reward
+        float timeStep;           // sim time step
+        int actionSpace;          // num discrete actions
         
-        // Constructor with default values
+        // defaults
         Config() 
             : targetSpeed(50.0f / 3.6f),
               maxEpisodeSteps(1000),
@@ -28,39 +28,39 @@ public:
         {}
     };
 
-    // Action space is discretized for DQN
+    // discrete actions for dqn
     enum Action {
-        STRONG_BRAKE = 0,    // Brake 1.0
-        MEDIUM_BRAKE = 1,    // Brake 0.66
-        LIGHT_BRAKE = 2,     // Brake 0.33
-        COAST = 3,           // No throttle or brake
-        LIGHT_THROTTLE = 4,  // Throttle 0.25
-        MEDIUM_THROTTLE = 5, // Throttle 0.5
-        STRONG_THROTTLE = 6, // Throttle 0.75
-        FULL_THROTTLE = 7,   // Throttle 1.0
-        NO_CHANGE = 8        // Keep current throttle/brake
+        STRONG_BRAKE = 0,    // 1.0
+        MEDIUM_BRAKE = 1,    // 0.66
+        LIGHT_BRAKE = 2,     // 0.33
+        COAST = 3,           // nothing
+        LIGHT_THROTTLE = 4,  // 0.25
+        MEDIUM_THROTTLE = 5, // 0.5
+        STRONG_THROTTLE = 6, // 0.75
+        FULL_THROTTLE = 7,   // 1.0
+        NO_CHANGE = 8        // keep current
     };
 
     DQNEnvironment(Config config = Config());
     
-    // Initialize or reset the environment
+    // init/reset env
     std::vector<float> reset();
     
-    // Step the simulation based on the agent's action
+    // step sim based on action
     std::tuple<std::vector<float>, float, bool> step(Action action);
     
-    // Convert action enum to throttle/brake values
+    // convert enum to actual controls
     std::pair<float, float> actionToControls(Action action);
     
-    // Get the current car for visualization
+    // get car for viz
     const Car& getCar() const { return car; }
 
-    // Get the current car for modification (non-const version)
+    // non-const access
     Car& getCar() { return car; }
     
-    // Helper for visualization
+    // helpers for viz
     float getTargetSpeed() const { return config.targetSpeed; }
-    int getStateSize() const { return 6; } // State vector size
+    int getStateSize() const { return 6; } // state vec size
     int getActionSize() const { return config.actionSpace; }
     
 private:
@@ -69,10 +69,10 @@ private:
     int currentStep;
     std::mt19937 rng;
     
-    // Last action for smoothness calculation
+    // remember last action
     Action lastAction;
     
-    // Current controls (for NO_CHANGE action)
+    // current controls for NO_CHANGE action
     float currentThrottle;
     float currentBrake;
     

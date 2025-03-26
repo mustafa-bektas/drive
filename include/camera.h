@@ -5,14 +5,12 @@
 
 namespace CarGame {
 
-/**
- * Camera class that handles camera movement and tracking
- */
+// camera follows the car
 class GameCamera {
 public:
     GameCamera();
     
-    // Update camera to follow the car
+    // update cam pos based on car
     void update(const Car& car);
     
     const Camera& getCamera() const { return camera; }

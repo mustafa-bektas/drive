@@ -10,15 +10,15 @@ namespace CarGame {
 
 class LaneKeepingEnvironment {
 public:
-    // Configuration for the lane keeping RL environment
+    // lane keeping config
     struct Config {
-        float laneWidth;               // Width of the lane in meters
-        float maxLateralDeviation;     // Maximum allowed lateral deviation before reset
-        float maxEpisodeSteps;         // Maximum steps per episode
-        float timeStep;                // Simulation time step
-        int actionSpace;               // Number of discrete actions
+        float laneWidth;               // lane width in meters
+        float maxLateralDeviation;     // max allowed deviation
+        float maxEpisodeSteps;         // max steps per episode
+        float timeStep;                // sim time step
+        int actionSpace;               // num discrete actions
         
-        // Constructor with default values
+        // defaults
         Config() 
             : laneWidth(10.0f),
               maxLateralDeviation(5.0f),
@@ -28,33 +28,33 @@ public:
         {}
     };
 
-    // Action space is discretized for DQN
+    // discrete actions for dqn
     enum Action {
-        TURN_HARD_LEFT = 0,     // Large left steering angle change
-        TURN_MEDIUM_LEFT = 1,   // Medium left steering angle change
-        TURN_GENTLE_LEFT = 2,   // Small left steering angle change
-        MAINTAIN_STEERING = 3,  // No change to steering
-        TURN_GENTLE_RIGHT = 4,  // Small right steering angle change
-        TURN_MEDIUM_RIGHT = 5,  // Medium right steering angle change
-        TURN_HARD_RIGHT = 6     // Large right steering angle change
+        TURN_HARD_LEFT = 0,     // big left turn
+        TURN_MEDIUM_LEFT = 1,   // medium left
+        TURN_GENTLE_LEFT = 2,   // small left
+        MAINTAIN_STEERING = 3,  // no change
+        TURN_GENTLE_RIGHT = 4,  // small right
+        TURN_MEDIUM_RIGHT = 5,  // medium right
+        TURN_HARD_RIGHT = 6     // big right
     };
 
     LaneKeepingEnvironment(Config config = Config());
     
-    // Initialize or reset the environment
+    // reset env
     std::vector<float> reset(const Car& carRef);
     
-    // Step the simulation based on the agent's action
+    // step based on action
     std::tuple<std::vector<float>, float, bool> step(Action action, Car& car);
     
-    // Convert action enum to steering angle adjustment
+    // convert action to steering change
     float actionToSteeringAdjustment(Action action);
     
-    // Helper for visualization
-    int getStateSize() const { return 5; } // State vector size
+    // helpers
+    int getStateSize() const { return 5; } // state size
     int getActionSize() const { return config.actionSpace; }
     
-    // Get lane position information
+    // lane position info
     float getLateralPosition(const Car& car) const;
     float getHeadingError(const Car& car) const;
     float getLateralVelocity(const Car& car) const;
@@ -64,13 +64,13 @@ private:
     int currentStep;
     std::mt19937 rng;
     
-    // Last action for smoothness calculation
+    // last action for smoothness
     Action lastAction;
     
-    // Current lateral state
-    float lateralPosition; // Distance from lane center
-    float headingError;    // Difference between car heading and lane direction
-    float lateralVelocity; // Rate of change of lateral position
+    // current lateral state
+    float lateralPosition; // dist from center
+    float headingError;    // heading vs lane dir
+    float lateralVelocity; // lateral position change rate
     
     std::vector<float> getState(const Car& car);
     float calculateReward(const std::vector<float>& state, Action action, const Car& car);

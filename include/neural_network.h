@@ -7,10 +7,6 @@
 
 namespace CarGame {
 
-/**
- * Simple neural network for inference of trained models
- * Simplified to only include functionality needed for model inference
- */
 class NeuralNetwork {
 public:
     struct Layer {
@@ -26,29 +22,29 @@ public:
         }
     };
     
-    // Constructor creates a network with the specified layer sizes
+    // create network with specified layers
     NeuralNetwork(const std::vector<int>& layerSizes);
     
-    // Forward pass through the network (inference)
+    // forward pass (inference)
     std::vector<float> forward(const std::vector<float>& input) const;
     
-    // Getters and setters for weights and biases (for loading from file)
+    // getters/setters for weights and biases
     std::vector<std::vector<std::vector<float>>> getAllWeights() const;
     std::vector<std::vector<float>> getAllBiases() const;
     void setAllWeights(const std::vector<std::vector<std::vector<float>>>& weights);
     void setAllBiases(const std::vector<std::vector<float>>& biases);
     
-    // Get layer sizes
+    // get sizes
     std::vector<int> getLayerSizes() const;
     
 private:
     std::vector<Layer> layers;
     
-    // Activation functions
+    // activation funcs
     static float relu(float x) { return x > 0.0f ? x : 0.0f; }
     static float linear(float x) { return x; }
     
-    // Initialize weights with Xavier initialization
+    // xavier init
     void initializeWeights(unsigned int seed = 42);
 };
 

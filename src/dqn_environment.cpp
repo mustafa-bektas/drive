@@ -15,18 +15,18 @@ DQNEnvironment::DQNEnvironment(Config config)
 }
 
 std::vector<float> DQNEnvironment::reset() {
-    // Reset to a random position within the lane
-    float laneWidth = 10.0f; // Match the lane width defined in rendering.cpp
+    // random pos within lane
+    float laneWidth = 10.0f; // match lane width in rendering.cpp
     float randomLateralPosition = ((float)rand() / RAND_MAX - 0.5f) * laneWidth * 1.02f;
     
-    // Random initial rotation (slight heading variation)
+    // slight heading variation
     float randomRotation = ((float)rand() / RAND_MAX - 0.5f) * 0.2f; // ±0.1 radians
     
     car = Car(Vector3{randomLateralPosition, 0.5f, 0.0f});
     car.rotation = randomRotation;
     currentStep = 0;
     
-    // Reset control values for NO_CHANGE action
+    // reset controls for NO_CHANGE action
     currentThrottle = 0.0f;
     currentBrake = 0.0f;
     lastAction = COAST;
@@ -35,29 +35,29 @@ std::vector<float> DQNEnvironment::reset() {
 }
 
 std::tuple<std::vector<float>, float, bool> DQNEnvironment::step(Action action) {
-    // Apply the agent's action to the car
+    // apply action to car
     std::pair<float, float> controls = actionToControls(action);
     car.throttle = controls.first;
     car.brake = controls.second;
     
-    // Update current controls for NO_CHANGE action
+    // save controls for NO_CHANGE action
     currentThrottle = controls.first;
     currentBrake = controls.second;
     
-    // Update car physics
+    // update physics
     car.update(config.timeStep);
     currentStep++;
     
-    // Get the new state
+    // get new state
     std::vector<float> newState = getState();
     
-    // Calculate reward
+    // calc reward
     float reward = calculateReward(newState, action);
     
-    // Check if episode is done
+    // check if done
     bool done = currentStep >= config.maxEpisodeSteps;
     
-    // Store last action for next reward calculation
+    // remember last action for reward
     lastAction = action;
     
     return std::make_tuple(newState, reward, done);
@@ -78,7 +78,7 @@ std::pair<float, float> DQNEnvironment::actionToControls(Action action) {
             brake = 0.33f;
             break;
         case COAST:
-            // Both zero
+            // both zero
             break;
         case LIGHT_THROTTLE:
             throttle = 0.25f;
@@ -104,23 +104,23 @@ std::pair<float, float> DQNEnvironment::actionToControls(Action action) {
 std::vector<float> DQNEnvironment::getState() {
     std::vector<float> state(6);
     
-    // Current speed (normalized)
-    state[0] = car.speed / 40.0f;  // Assuming max speed around 40 m/s (144 km/h)
+    // speed (normalized)
+    state[0] = car.speed / 40.0f;  // max 40 m/s
     
-    // Speed difference from target (normalized)
+    // speed diff from target (normalized)
     state[1] = (car.speed - config.targetSpeed) / 40.0f;
     
-    // Current acceleration (normalized)
-    state[2] = car.acceleration.x / 10.0f;  // Assuming max accel around 10 m/s²
+    // accel (normalized)
+    state[2] = car.acceleration.x / 10.0f;  // max 10 m/s2
     
-    // Current throttle
+    // throttle
     state[3] = car.throttle;
     
-    // Current brake
+    // brake
     state[4] = car.brake;
     
-    // Engine RPM (normalized)
-    state[5] = car.engineSpeed / 8000.0f;  // Based on max RPM in car.cpp
+    // rpm (normalized)
+    state[5] = car.engineSpeed / 8000.0f;  // based on max in car.cpp
     
     return state;
 }
@@ -128,33 +128,33 @@ std::vector<float> DQNEnvironment::getState() {
 float DQNEnvironment::calculateReward(const std::vector<float>& state, Action action) {
     float reward = 0.0f;
     
-    // Main reward: how close the car is to the target speed
+    // main reward: closeness to target speed
     float speedDiff = std::abs(car.speed - config.targetSpeed);
     
     if (speedDiff < config.speedRewardThreshold) {
-        // Maximum reward when within threshold
+        // max reward within threshold
         reward += 1.0f;
     } else {
-        // Gradually decreasing reward as the difference increases
+        // decreasing reward as diff increases
         reward += std::exp(-speedDiff * 0.5f);
     }
     
-    // Penalize large changes in controls
+    // penalize big control changes
     if (lastAction != action && 
         action != NO_CHANGE && 
         lastAction != NO_CHANGE) {
-        // Only penalize if action changed significantly
+        // only penalize significant changes
         if (std::abs(static_cast<int>(action) - static_cast<int>(lastAction)) > 2) {
             reward -= 0.2f;
         }
     }
     
-    // Penalize extreme throttle changes
+    // penalize excessive throttle
     if (car.throttle > 0.8f && car.speed > config.targetSpeed * 1.1f) {
         reward -= 0.3f;
     }
     
-    // Penalize unnecessary braking
+    // penalize unneeded braking
     if (car.brake > 0.0f && car.speed < config.targetSpeed * 0.9f) {
         reward -= 0.3f;
     }

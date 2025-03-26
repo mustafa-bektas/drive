@@ -8,19 +8,15 @@
 
 namespace CarGame {
 
-/**
- * Lane Keeping Agent for inference of trained models
- * Simplified to only include functionality needed for model inference
- */
 class LaneKeepingAgent {
 public:
     struct Config {
-        int stateSize;              // Size of state vector
-        int actionSize;             // Number of possible actions
-        int hiddenSize1;            // First hidden layer size
-        int hiddenSize2;            // Second hidden layer size
+        int stateSize;              // state vec size
+        int actionSize;             // num actions
+        int hiddenSize1;            // first hidden size
+        int hiddenSize2;            // second hidden size
 
-        // Constructor with default values
+        // defaults
         Config()
             : stateSize(5),
               actionSize(7),
@@ -31,13 +27,13 @@ public:
     
     LaneKeepingAgent(Config config = Config());
     
-    // Select an action based on current state
+    // pick action for state
     LaneKeepingEnvironment::Action selectAction(const std::vector<float>& state);
     
-    // Load model from file
+    // load model
     bool loadModel(const std::string& filename);
     
-    // Get network for direct access (if needed)
+    // direct access
     NeuralNetwork* getNetwork() const { return network.get(); }
     
 private:
@@ -45,7 +41,7 @@ private:
     std::unique_ptr<NeuralNetwork> network;
     std::mt19937 rng;
     
-    // Get best action for a state (used in inference)
+    // get best action for inference
     LaneKeepingEnvironment::Action getBestAction(const std::vector<float>& state);
 };
 

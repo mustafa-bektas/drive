@@ -9,40 +9,37 @@
 
 namespace CarGame {
 
-/**
- * Helper class for visualizing the car simulation 
- * Focused on current metrics, not training history
- */
+// viz helper - shows current metrics only
 class VisualizationHelper {
 public:
     VisualizationHelper(int historySize = 120);
     
-    // Update speed history (for visualization)
+    // update speed history
     void updateSpeedHistory(const Car& car, float targetSpeed);
     
-    // Draw the visualization UI
+    // draw ui
     void drawUI(const Car& car, float currentSpeed, float targetSpeed, 
                float simulationSpeed, bool paused, bool modelLoaded);
     
-    // Draw lane keeping information
+    // draw lane info
     void drawLaneInfo(const Car& car, float laneWidth, bool laneKeepingActive);
     
-    // Reset metrics (call when resetting simulation)
+    // reset metrics
     void reset();
     
-    // Toggle UI visibility
+    // toggle ui
     void toggleUI();
     
 private:
-    // Speed history for graph
+    // history for graph
     std::deque<float> speedHistory;
     std::deque<float> targetSpeedHistory;
     
-    // Config
+    // config
     int historySize;
     bool showUI;
     
-    // Helper drawing methods
+    // helper draw methods
     void drawCompactInfoPanel(int x, int y, int width, int height, 
                              const Car& car, float currentSpeed, 
                              float targetSpeed, float simulationSpeed, bool paused, 
@@ -50,10 +47,10 @@ private:
     void drawCompactSpeedGraph(int x, int y, int width, int height, float targetSpeed);
     void drawMinimalHelp(int x, int y, const char* helpText);
     
-    // Helper to get action name 
+    // get action name
     std::string getActionName(DQNEnvironment::Action action);
     
-    // Helper to get color based on value relative to target 
+    // get color based on value vs target
     Color getSpeedColor(float speed, float target);
 };
 

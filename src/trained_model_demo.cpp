@@ -16,13 +16,13 @@
 using namespace CarGame;
 
 int main(int argc, char* argv[]) {
-    // Parse command line arguments
+    // cli args
     std::string speedModelFile = "models/best_model_for_cpp.txt";
     std::string laneModelFile = "models/best_lane_keeping_model_for_cpp.txt";
     float targetSpeed = 50.0f / 3.6f;  // 50 km/h in m/s
     bool enableLaneKeeping = true;
     
-    // Process command line arguments
+    // handle args
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--speed-model" && i + 1 < argc) {
@@ -30,26 +30,26 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--lane-model" && i + 1 < argc) {
             laneModelFile = argv[++i];
         } else if (arg == "--target-speed" && i + 1 < argc) {
-            targetSpeed = std::stof(argv[++i]) / 3.6f;  // Convert km/h to m/s
+            targetSpeed = std::stof(argv[++i]) / 3.6f;  // km/h to m/s
         } else if (arg == "--disable-lane-keeping") {
             enableLaneKeeping = false;
         }
     }
     
-    // Initialization
+    // init
     const int screenWidth = 1280;
     const int screenHeight = 720;
     InitWindow(screenWidth, screenHeight, "Car Game - DQN Speed & Lane Keeping Demo");
-    SetExitKey(KEY_NULL); // Disable default ESC key exit to handle it manually
+    SetExitKey(KEY_NULL); // use custom exit handling
     
-    // Create speed control environment
+    // speed env
     DQNEnvironment::Config speedEnvConfig;
     speedEnvConfig.targetSpeed = targetSpeed;
     speedEnvConfig.maxEpisodeSteps = 1000;
     
     DQNEnvironment speedEnv(speedEnvConfig);
     
-    // Create lane keeping environment
+    // lane env
     LaneKeepingEnvironment::Config laneEnvConfig;
     laneEnvConfig.laneWidth = 10.0f;
     laneEnvConfig.maxLateralDeviation = 5.0f;
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
     
     LaneKeepingEnvironment laneEnv(laneEnvConfig);
     
-    // Create speed control agent
+    // speed agent
     DQNAgent::Config speedAgentConfig;
     speedAgentConfig.stateSize = speedEnv.getStateSize();
     speedAgentConfig.actionSize = speedEnv.getActionSize();
@@ -68,12 +68,12 @@ int main(int argc, char* argv[]) {
     if (!speedModelLoaded) {
         std::cout << "Failed to load speed control model: " << speedModelFile << std::endl;
         DrawText("Failed to load speed control model!", 400, 300, 20, RED);
-        WaitTime(2.0); // Wait for 2 seconds to show the error
+        WaitTime(2.0); // show error for 2 secs
     } else {
         std::cout << "Successfully loaded speed control model: " << speedModelFile << std::endl;
     }
     
-    // Create lane keeping agent
+    // lane agent
     LaneKeepingAgent::Config laneAgentConfig;
     laneAgentConfig.stateSize = laneEnv.getStateSize();
     laneAgentConfig.actionSize = laneEnv.getActionSize();
@@ -87,45 +87,45 @@ int main(int argc, char* argv[]) {
         if (!laneModelLoaded) {
             std::cout << "Failed to load lane keeping model: " << laneModelFile << std::endl;
             DrawText("Failed to load lane keeping model!", 400, 330, 20, RED);
-            WaitTime(2.0); // Wait for 2 seconds to show the error
+            WaitTime(2.0); // show error for 2 secs
         } else {
             std::cout << "Successfully loaded lane keeping model: " << laneModelFile << std::endl;
         }
     }
     
-    // Create rendering components
+    // rendering stuff
     GameCamera camera;
     Renderer renderer;
     renderer.initialize(speedEnv.getCar());
     
-    // Create visualization helper
-    VisualizationHelper visualizer(120); // 120 frames of history
+    // viz helper
+    VisualizationHelper visualizer(120); // 120 frame history
     
     Vector3 floorPosition = {0.0f, 0.0f, 0.0f};
     
-    // Reset the environments
+    // reset envs
     std::vector<float> speedState = speedEnv.reset();
     std::vector<float> laneState = laneEnv.reset(speedEnv.getCar());
     int step = 0;
     
-    // Simulation control
+    // sim controls
     bool paused = false;
     bool fullscreen = false;
     float simulationSpeed = 1.0f;
     float lastUpdateTime = GetTime();
     
-    // Lane keeping control toggle
+    // lane keeping toggle
     bool laneKeepingActive = enableLaneKeeping && laneModelLoaded;
     
     SetTargetFPS(60);
     
-    // Main game loop
+    // main loop
     while (!WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE)) {
         float currentTime = GetTime();
         float deltaTime = currentTime - lastUpdateTime;
         lastUpdateTime = currentTime;
         
-        // Process input for simulation control
+        // sim control input
         if (IsKeyPressed(KEY_SPACE)) {
             paused = !paused;
         }
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
         }
         
         if (IsKeyPressed(KEY_R)) {
-            // Reset environments
+            // reset
             speedState = speedEnv.reset();
             laneState = laneEnv.reset(speedEnv.getCar());
             step = 0;
@@ -158,42 +158,42 @@ int main(int argc, char* argv[]) {
         }
         
         if (IsKeyPressed(KEY_L)) {
-            // Toggle lane keeping
+            // toggle lane keeping
             laneKeepingActive = !laneKeepingActive && enableLaneKeeping && laneModelLoaded;
             printf("Lane keeping: %s\n", laneKeepingActive ? "ON" : "OFF");
         }
         
-        // Run simulation if not paused
+        // run sim if not paused
         if (!paused) {
-            // Multiple simulation steps based on simulation speed
+            // multi steps based on sim speed
             int stepsThisFrame = std::max(1, static_cast<int>(simulationSpeed));
             
             for (int i = 0; i < stepsThisFrame; i++) {
                 Car& car = speedEnv.getCar();
                 
-                // First, select and apply lane keeping action if enabled
+                // lane keeping first if enabled
                 if (laneKeepingActive) {
                     LaneKeepingEnvironment::Action laneAction = laneAgent.selectAction(laneState);
                     std::tuple<std::vector<float>, float, bool> laneResult = laneEnv.step(laneAction, car);
                     laneState = std::get<0>(laneResult);
                 }
                 
-                // Then, select and apply speed control action
+                // then speed control
                 DQNEnvironment::Action speedAction = speedAgent.selectAction(speedState);
                 std::tuple<std::vector<float>, float, bool> speedResult = speedEnv.step(speedAction);
                 speedState = std::get<0>(speedResult);
                 bool done = std::get<2>(speedResult);
                 
-                // Update visualization metrics
+                // update viz metrics
                 visualizer.updateSpeedHistory(speedEnv.getCar(), speedEnv.getTargetSpeed());
                 
                 step++;
                 
-                // Reset if done
+                // reset if done
                 if (done) {
                     printf("Episode completed. Steps: %d\n", step);
                     
-                    // Reset for next episode
+                    // reset for next ep
                     speedState = speedEnv.reset();
                     laneState = laneEnv.reset(speedEnv.getCar());
                     step = 0;
@@ -202,25 +202,25 @@ int main(int argc, char* argv[]) {
             }
         }
         
-        // Update camera to follow the car
+        // follow car with camera
         camera.update(speedEnv.getCar());
         
-        // Render
+        // render
         BeginDrawing();
             ClearBackground(RAYWHITE);
             
-            // Draw 3D scene
+            // 3d scene
             renderer.drawScene(camera, speedEnv.getCar(), floorPosition);
             
-            // Draw visualization UI
+            // ui
             visualizer.drawUI(speedEnv.getCar(), speedEnv.getCar().speed, speedEnv.getTargetSpeed(), 
                             simulationSpeed, paused, speedModelLoaded);
             
-            // Draw lane keeping visualization
+            // lane viz
             if (enableLaneKeeping) {
                 visualizer.drawLaneInfo(speedEnv.getCar(), laneEnvConfig.laneWidth, laneKeepingActive);
                 
-                // Show lane keeping status
+                // lane status
                 const char* laneKeepingStatus = laneKeepingActive ? "Lane Keeping: ON (L to toggle)" : 
                                                               "Lane Keeping: OFF (L to toggle)";
                 DrawText(laneKeepingStatus, 10, GetScreenHeight() - 50, 20, 
@@ -230,7 +230,7 @@ int main(int argc, char* argv[]) {
         EndDrawing();
     }
     
-    // Clean up before exit
+    // cleanup
     if (fullscreen) {
         ToggleFullscreen();
     }

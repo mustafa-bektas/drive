@@ -4,7 +4,7 @@
 namespace CarGame {
 
 GameCamera::GameCamera() {
-    // Initialize the camera with default settings
+    // default camera setup
     camera.position = Vector3{ 10.0f, 10.0f, 10.0f };
     camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
@@ -12,7 +12,7 @@ GameCamera::GameCamera() {
     camera.projection = CAMERA_PERSPECTIVE;
 }
 
-// Updates the camera to follow the car
+// follow the car
 void GameCamera::update(const Car& car) {
     camera.target = car.position;
     float cameraDistance = 15.0f;

@@ -9,7 +9,7 @@ LaneKeepingAgent::LaneKeepingAgent(Config config)
     : config(config),
       rng(std::random_device{}()) {
     
-    // Create neural network for inference
+    // create nn for inference
     std::vector<int> layerSizes = {
         config.stateSize,
         config.hiddenSize1,
@@ -21,15 +21,15 @@ LaneKeepingAgent::LaneKeepingAgent(Config config)
 }
 
 LaneKeepingEnvironment::Action LaneKeepingAgent::selectAction(const std::vector<float>& state) {
-    // Inference only - select best action based on Q-values
+    // pick best action
     return getBestAction(state);
 }
 
 LaneKeepingEnvironment::Action LaneKeepingAgent::getBestAction(const std::vector<float>& state) {
-    // Forward pass through the network to get Q-values
+    // get q-vals
     std::vector<float> qValues = network->forward(state);
     
-    // Find action with highest Q-value
+    // find highest q-val
     auto maxIt = std::max_element(qValues.begin(), qValues.end());
     int bestActionIndex = std::distance(qValues.begin(), maxIt);
     

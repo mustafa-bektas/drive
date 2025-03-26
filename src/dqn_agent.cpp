@@ -9,7 +9,7 @@ DQNAgent::DQNAgent(Config config)
     : config(config),
       rng(std::random_device{}()) {
     
-    // Create Q-network for inference
+    // setup q-network for inference
     std::vector<int> layerSizes = {
         config.stateSize,
         config.hiddenSize1,
@@ -21,15 +21,15 @@ DQNAgent::DQNAgent(Config config)
 }
 
 DQNEnvironment::Action DQNAgent::selectAction(const std::vector<float>& state) {
-    // Inference only - select best action based on Q-values
+    // just pick best action for inference
     return getBestAction(state);
 }
 
 DQNEnvironment::Action DQNAgent::getBestAction(const std::vector<float>& state) {
-    // Forward pass through the network to get Q-values
+    // forward pass to get q-values
     std::vector<float> qValues = network->forward(state);
     
-    // Find action with highest Q-value
+    // find action with highest q-value
     auto maxIt = std::max_element(qValues.begin(), qValues.end());
     int bestActionIndex = std::distance(qValues.begin(), maxIt);
     

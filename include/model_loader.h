@@ -11,7 +11,7 @@ namespace CarGame {
 
 class ModelLoader {
 public:
-    // Load model from text file exported by Python
+    // load model from python export
     static bool loadModelFromPython(const std::string& filename, NeuralNetwork& network) {
         std::ifstream file(filename);
         if (!file.is_open()) {
@@ -19,14 +19,14 @@ public:
             return false;
         }
         
-        // Read network architecture
+        // get architecture
         std::string line;
         if (!std::getline(file, line) || line != "network_architecture") {
             std::cerr << "Error: Invalid model file format (missing architecture section)" << std::endl;
             return false;
         }
         
-        // Read layer sizes
+        // read layer sizes
         std::vector<int> layerSizes;
         while (std::getline(file, line)) {
             if (line == "weights") break;
@@ -38,22 +38,22 @@ public:
             }
         }
         
-        // Check if we have at least input and output layer
+        // need at least in/out layers
         if (layerSizes.size() < 2) {
             std::cerr << "Error: Network must have at least input and output layers" << std::endl;
             return false;
         }
         
-        // Re-create the network with the correct architecture
+        // recreate network with right architecture
         NeuralNetwork newNetwork(layerSizes);
         
-        // Read weights section
+        // read weights section
         std::vector<std::vector<std::vector<float>>> weights;
         std::vector<std::vector<float>> currentLayerWeights;
         int currentLayer = 0;
         int currentNeuron = 0;
         
-        // Initialize weights structure
+        // init weights structure
         for (size_t i = 1; i < layerSizes.size(); i++) {
             int outputSize = layerSizes[i];
             int inputSize = layerSizes[i-1];
@@ -65,7 +65,7 @@ public:
             weights.push_back(layerWeights);
         }
         
-        // Read weights
+        // read weights
         while (std::getline(file, line)) {
             if (line == "biases") break;
             
@@ -77,7 +77,7 @@ public:
                 neuronWeights.push_back(weight);
             }
             
-            // Store weights
+            // store weights
             if (!neuronWeights.empty()) {
                 if (currentNeuron < weights[currentLayer].size() && 
                     neuronWeights.size() == weights[currentLayer][currentNeuron].size()) {
@@ -95,7 +95,7 @@ public:
             }
         }
         
-        // Read biases
+        // read biases
         std::vector<std::vector<float>> biases;
         for (size_t i = 1; i < layerSizes.size(); i++) {
             biases.push_back(std::vector<float>(layerSizes[i], 0.0f));
@@ -120,11 +120,11 @@ public:
             }
         }
         
-        // Set weights and biases in the network
+        // set weights and biases
         newNetwork.setAllWeights(weights);
         newNetwork.setAllBiases(biases);
         
-        // Replace the input network with our new one
+        // replace the input network
         network = newNetwork;
         
         std::cout << "Model successfully loaded from " << filename << std::endl;
