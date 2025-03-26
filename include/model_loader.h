@@ -15,14 +15,14 @@ public:
     static bool loadModelFromPython(const std::string& filename, NeuralNetwork& network) {
         std::ifstream file(filename);
         if (!file.is_open()) {
-            std::cerr << "Error: Could not open model file " << filename << std::endl;
+            std::cerr << "can't open file: " << filename << std::endl;
             return false;
         }
         
         // get architecture
         std::string line;
         if (!std::getline(file, line) || line != "network_architecture") {
-            std::cerr << "Error: Invalid model file format (missing architecture section)" << std::endl;
+            std::cerr << "bad file format - missing arch section" << std::endl;
             return false;
         }
         
@@ -33,14 +33,14 @@ public:
             try {
                 layerSizes.push_back(std::stoi(line));
             } catch (const std::exception& e) {
-                std::cerr << "Error parsing layer size: " << e.what() << std::endl;
+                std::cerr << "parse error on layer size: " << e.what() << std::endl;
                 return false;
             }
         }
         
         // need at least in/out layers
         if (layerSizes.size() < 2) {
-            std::cerr << "Error: Network must have at least input and output layers" << std::endl;
+            std::cerr << "need at least in/out layers" << std::endl;
             return false;
         }
         
@@ -83,7 +83,7 @@ public:
                     neuronWeights.size() == weights[currentLayer][currentNeuron].size()) {
                     weights[currentLayer][currentNeuron] = neuronWeights;
                 } else {
-                    std::cerr << "Error: Weight dimensions mismatch" << std::endl;
+                    std::cerr << "weight dims don't match" << std::endl;
                     return false;
                 }
                 
@@ -115,7 +115,7 @@ public:
                 biases[currentLayer] = layerBiases;
                 currentLayer++;
             } else {
-                std::cerr << "Error: Bias dimensions mismatch" << std::endl;
+                std::cerr << "bias dims don't match" << std::endl;
                 return false;
             }
         }
@@ -127,7 +127,7 @@ public:
         // replace the input network
         network = newNetwork;
         
-        std::cout << "Model successfully loaded from " << filename << std::endl;
+        std::cout << "loaded model: " << filename << std::endl;
         return true;
     }
 };

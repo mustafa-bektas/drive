@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
         
         if (!laneModelLoaded) {
             std::cout << "Failed to load lane keeping model: " << laneModelFile << std::endl;
-            DrawText("Failed to load lane keeping model!", 400, 330, 20, RED);
+            DrawText("Failed to load lane keeping model", 400, 330, 20, RED);
             WaitTime(2.0); // show error for 2 secs
         } else {
             std::cout << "Successfully loaded lane keeping model: " << laneModelFile << std::endl;

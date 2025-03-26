@@ -20,7 +20,7 @@ os.makedirs("./car_dqn_models", exist_ok=True)
 
 # use gpu if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+print(f"using {device}")
 
 # car params - match c++ impl
 CAR_PARAMS = {
@@ -514,11 +514,11 @@ def train_dqn(env, agent, n_episodes=1000, max_t=1000, target_score=100.0,
         if i_episode % print_every == 0:
             mean_score = np.mean(scores_window)
             elapsed = time.time() - start_time
-            print(f"Episode {i_episode}/{n_episodes} | "
-                  f"Average Score: {mean_score:.2f} | "
-                  f"Epsilon: {agent.epsilon:.4f} | "
-                  f"Avg Speed: {avg_speed:.1f} km/h | "
-                  f"Elapsed: {elapsed:.1f}s")
+            print(f"ep {i_episode}/{n_episodes} | "
+                f"avg score: {mean_score:.2f} | "
+                f"eps: {agent.epsilon:.4f} | "
+                f"speed: {avg_speed:.1f} km/h | "
+                f"time: {elapsed:.1f}s")
 
             # plot progress
             clear_output(wait=True)
@@ -529,31 +529,31 @@ def train_dqn(env, agent, n_episodes=1000, max_t=1000, target_score=100.0,
             if mean_score > best_score:
                 best_score = mean_score
                 agent.save(f"{save_dir}/best_model.pth")
-                print(f"New best model saved with score: {best_score:.2f}")
+                print(f"new best: {best_score:.2f}")
 
                 # export for c++
                 export_model_for_cpp(f"{save_dir}/best_model.pth", f"{save_dir}/best_model_for_cpp.txt")
-                print(f"Best model exported for C++: {save_dir}/best_model_for_cpp.txt")
+                print(f"exported: {save_dir}/best_model_for_cpp.txt")
 
         # save checkpoint regularly
         if i_episode == 1 or i_episode % save_every == 0 or i_episode == n_episodes:
             checkpoint_path = f"{save_dir}/checkpoint_{i_episode}.pth"
             agent.save(checkpoint_path)
-            print(f"Checkpoint saved: {checkpoint_path}")
+            print(f"saved: {checkpoint_path}")
 
             # export for c++
             export_path = f"{save_dir}/model_for_cpp_ep{i_episode}.txt"
             export_model_for_cpp(checkpoint_path, export_path)
-            print(f"Model exported for C++: {export_path}")
+            print(f"exported: {export_path}")
 
         # solved?
         if np.mean(scores_window) >= target_score and len(scores_window) >= 100:
-            print(f"\nEnvironment solved in {i_episode} episodes! Average Score: {np.mean(scores_window):.2f}")
+            print(f"solved in {i_episode} eps. avg: {np.mean(scores_window):.2f}")
             agent.save(f"{save_dir}/solved_model.pth")
 
             # export for c++
             export_model_for_cpp(f"{save_dir}/solved_model.pth", f"{save_dir}/solved_model_for_cpp.txt")
-            print(f"Solved model exported for C++: {save_dir}/solved_model_for_cpp.txt")
+            print(f"exported solved: {save_dir}/solved_model_for_cpp.txt")
             break
 
     # save final model
@@ -561,14 +561,14 @@ def train_dqn(env, agent, n_episodes=1000, max_t=1000, target_score=100.0,
 
     # export final c++ model
     export_model_for_cpp(f"{save_dir}/final_model.pth", f"{save_dir}/final_model_for_cpp.txt")
-    print(f"Final model exported for C++: {save_dir}/final_model_for_cpp.txt")
+    print(f"exported final: {save_dir}/final_model_for_cpp.txt")
 
     # save training stats
     np.save(f"{save_dir}/final_training_stats.npy",
             {'rewards': all_rewards, 'speeds': all_avg_speeds, 'epsilons': all_epsilons})
 
     total_time = time.time() - start_time
-    print(f"Training completed in {total_time/60:.1f} minutes")
+    print(f"done in {total_time/60:.1f} min")
 
     return scores
 
@@ -646,7 +646,7 @@ def export_model_for_cpp(model_path, output_path):
         for layer_biases in biases:
             f.write(" ".join([str(b) for b in layer_biases]) + "\n")
 
-    print(f"Model exported to {output_path}")
+    print(f"exported to {output_path}")
 
 
 def train_with_curriculum(env, agent, curriculum_stages, episodes_per_stage=500, 
@@ -674,7 +674,7 @@ def train_with_curriculum(env, agent, curriculum_stages, episodes_per_stage=500,
     total_episodes = 0
     overall_start_time = time.time()
     
-    print("Starting curriculum training with these stages:")
+    print("starting curriculum learning with stages::")
     for i, stage in enumerate(curriculum_stages):
         print(f"Stage {i+1}: {stage['speed_min_kmh']}-{stage['speed_max_kmh']} km/h, Target score: {stage['target_score']}")
     
@@ -925,4 +925,4 @@ if __name__ == "__main__":
         save_dir="./car_dqn_models"
     )
     
-    print("Curriculum training complete!")
+    print("Curriculum training complete")
