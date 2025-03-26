@@ -71,44 +71,44 @@ class CarSimulation:
         self.position = np.array([0.0, 0.5, 0.0])
         if random_init:
             # Random lateral position within the lane
-            self.position[0] = np.random.uniform(-LANE_PARAMS['lane_width']/3, LANE_PARAMS['lane_width']/3)
+            self.position[0] = np.random.uniform(-LANE_PARAMS['lane_width']/2, LANE_PARAMS['lane_width']/2)
             # Random initial heading
             self.rotation = np.random.uniform(-0.2, 0.2)
-        
+
         self.velocity = np.array([0.0, 0.0, 0.0])
         self.acceleration = np.array([0.0, 0.0, 0.0])
-        self.speed = 10.0  # Constant speed for lane keeping training
+        self.speed = 40.0  # Constant speed for lane keeping training
         self.steering_angle = 0.0
         self.throttle = 0.5
         self.brake = 0.0
         self.lateral_velocity = 0.0
         self.yaw_rate = 0.0
-        
+
         # Initialize velocity based on speed and rotation
         self.velocity[0] = self.speed * np.sin(self.rotation)  # Lateral component
         self.velocity[2] = self.speed * np.cos(self.rotation)  # Longitudinal component
 
     def update(self):
         # Simple kinematic update focused on lateral movement
-        
+
         # Update rotation based on steering angle
         # This is a simplified model for steering
         self.yaw_rate = self.speed * np.tan(self.steering_angle) / self.params['wheel_base']
         self.rotation += self.yaw_rate * self.time_step
-        
+
         # Normalize rotation
         while self.rotation > 2 * np.pi:
             self.rotation -= 2 * np.pi
         while self.rotation < 0:
             self.rotation += 2 * np.pi
-        
+
         # Compute longitudinal and lateral velocities
         self.velocity[0] = self.speed * np.sin(self.rotation)  # Lateral component
         self.velocity[2] = self.speed * np.cos(self.rotation)  # Longitudinal component
-        
+
         # Update position
         self.position += self.velocity * self.time_step
-        
+
         # Update lateral velocity for state calculation
         self.lateral_velocity = self.velocity[0]
 
@@ -119,9 +119,9 @@ class DQNetwork(nn.Module):
         self.seed = torch.manual_seed(seed)
 
         # Network architecture (similar to the speed control network)
-        self.fc1 = nn.Linear(state_size, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, action_size)
+        self.fc1 = nn.Linear(state_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, action_size)
 
         # Initialize weights
         self.apply(self._init_weights)
@@ -284,17 +284,17 @@ class LaneKeepingEnv:
         self.max_steps = max_steps
         self.current_step = 0
         self.last_action = 3  # MAINTAIN_STEERING
-        
+
         # Define action space
         self.action_size = 7
         self.steering_adjustments = {
-            0: 0.15,    # TURN_HARD_LEFT
-            1: 0.08,    # TURN_MEDIUM_LEFT
-            2: 0.03,    # TURN_GENTLE_LEFT
+            0: 0.05,    # TURN_HARD_LEFT
+            1: 0.025,    # TURN_MEDIUM_LEFT
+            2: 0.01,    # TURN_GENTLE_LEFT
             3: 0.0,     # MAINTAIN_STEERING
-            4: -0.03,   # TURN_GENTLE_RIGHT
-            5: -0.08,   # TURN_MEDIUM_RIGHT
-            6: -0.15,   # TURN_HARD_RIGHT
+            4: -0.01,   # TURN_GENTLE_RIGHT
+            5: -0.025,   # TURN_MEDIUM_RIGHT
+            6: -0.05,   # TURN_HARD_RIGHT
         }
 
     def reset(self):
@@ -305,103 +305,107 @@ class LaneKeepingEnv:
 
     def step(self, action):
         self.current_step += 1
-        
+
         # Apply steering adjustment
         steering_adjustment = self.steering_adjustments[action]
-        self.car.steering_angle += steering_adjustment
-        
+        # Apply steering adjustment
+        if action == 3:  # MAINTAIN_STEERING
+            self.car.steering_angle *= 0.7  # Return to center at 30% rate
+        else:
+            self.car.steering_angle += steering_adjustment
+
         # Limit steering angle
         if self.car.steering_angle > self.car.params['max_steering_angle']:
             self.car.steering_angle = self.car.params['max_steering_angle']
         elif self.car.steering_angle < -self.car.params['max_steering_angle']:
             self.car.steering_angle = -self.car.params['max_steering_angle']
-        
+
         # Update car simulation
         self.car.update()
-        
+
         # Get new state
         state = self._get_state()
-        
+
         # Calculate reward
         reward = self._calculate_reward(state, action)
-        
+
         # Check if episode is done
         done = self._is_done()
-        
+
         # Remember last action
         self.last_action = action
-        
+
         return state, reward, done, {}
 
     def _get_state(self):
         """Convert car state to input for neural network"""
         state = np.zeros(5)
-        
+
         # Lateral position from lane center (normalized by lane width)
         lateral_position = self.car.position[0]
         state[0] = lateral_position / (self.lane_width / 2.0)
-        
+
         # Heading error (normalized)
         # Lane is along z-axis so heading error is just the rotation
         heading_error = self.car.rotation
         while heading_error > np.pi: heading_error -= 2.0 * np.pi
         while heading_error < -np.pi: heading_error += 2.0 * np.pi
         state[1] = heading_error / 1.0  # Normalized to typical range
-        
+
         # Lateral velocity (normalized)
         state[2] = self.car.lateral_velocity / 5.0
-        
+
         # Current steering angle (normalized)
         state[3] = self.car.steering_angle / self.car.params['max_steering_angle']
-        
+
         # Distance to nearest lane boundary (normalized)
         distance_to_boundary = (self.lane_width / 2.0) - abs(lateral_position)
         state[4] = distance_to_boundary / (self.lane_width / 2.0)
-        
+
         return state
 
     def _calculate_reward(self, state, action):
         reward = 0.0
-        
+
         # Reward for staying in the center of the lane
         center_distance = abs(self.car.position[0])
-        lane_half_width = self.lane_width / 2.0
-        centering_reward = 1.0 - min(1.0, center_distance / lane_half_width)
+        # Reward for staying in the center of the lane
+        centering_reward = np.exp(-2.0 * center_distance)
         reward += centering_reward * 2.0  # Higher weight for centering
-        
+
         # Reward for aligning with the lane direction
         heading_error = abs(state[1])
         alignment_reward = 1.0 - min(1.0, heading_error)
         reward += alignment_reward
-        
+
         # Penalize abrupt steering changes
         if self.last_action != action and action != 3 and self.last_action != 3:
             action_diff = abs(action - self.last_action)
             if action_diff > 2:
                 reward -= 0.5 * (action_diff - 2)
-        
+
         # Penalize excessive steering angles
         steering_ratio = abs(self.car.steering_angle / self.car.params['max_steering_angle'])
         if steering_ratio > 0.8:
             reward -= 0.5 * (steering_ratio - 0.8) / 0.2
-        
+
         # Strong penalty for going off the lane
         if abs(self.car.position[0]) > self.max_lateral_deviation:
             reward -= 10.0
-        
+
         return reward
 
     def _is_done(self):
         # Check if episode is done
         if self.current_step >= self.max_steps:
             return True
-        
+
         # Episode is done if car leaves the lane by too much
         if abs(self.car.position[0]) > self.max_lateral_deviation:
             return True
-        
+
         return False
-    
+
     def render(self):
         # Placeholder for rendering, not implemented
         pass
@@ -452,7 +456,7 @@ def export_model_for_cpp(model_path, output_path):
 # Training function
 def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score=90.0,
                          print_every=10, save_every=100, save_dir="./car_dqn_models"):
-    
+
     # Create directory for saving models if it doesn't exist
     os.makedirs(save_dir, exist_ok=True)
 
@@ -524,7 +528,7 @@ def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score
                 print(f"New best model saved with score: {best_score:.2f}")
 
                 # Export this model for C++
-                export_model_for_cpp(f"{save_dir}/best_lane_keeping_model.pth", 
+                export_model_for_cpp(f"{save_dir}/best_lane_keeping_model.pth",
                                    f"{save_dir}/best_lane_keeping_model_for_cpp.txt")
                 print(f"Best model exported for C++: {save_dir}/best_lane_keeping_model_for_cpp.txt")
 
@@ -545,7 +549,7 @@ def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score
             agent.save(f"{save_dir}/lane_keeping_solved_model.pth")
 
             # Export this model for C++
-            export_model_for_cpp(f"{save_dir}/lane_keeping_solved_model.pth", 
+            export_model_for_cpp(f"{save_dir}/lane_keeping_solved_model.pth",
                                f"{save_dir}/lane_keeping_solved_model_for_cpp.txt")
             print(f"Solved model exported for C++: {save_dir}/lane_keeping_solved_model_for_cpp.txt")
             break
@@ -554,7 +558,7 @@ def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score
     agent.save(f"{save_dir}/lane_keeping_final_model.pth")
 
     # Export final model for C++
-    export_model_for_cpp(f"{save_dir}/lane_keeping_final_model.pth", 
+    export_model_for_cpp(f"{save_dir}/lane_keeping_final_model.pth",
                        f"{save_dir}/lane_keeping_final_model_for_cpp.txt")
     print(f"Final model exported for C++: {save_dir}/lane_keeping_final_model_for_cpp.txt")
 
@@ -604,36 +608,36 @@ def plot_training_progress(rewards, lateral_positions, epsilons):
 if __name__ == "__main__":
     # Ensure model directory exists
     os.makedirs("./car_dqn_models", exist_ok=True)
-    
+
     # Create environment and agent
     env = LaneKeepingEnv()
-    
+
     agent = LaneKeepingDQNAgent(
         state_size=5,       # 5 state dimensions for lane keeping
         action_size=7,      # 7 discrete steering actions
         config={
-            'gamma': 0.99,
+            'gamma': 0.98,
             'tau': 0.01,
             'lr': 0.001,
             'buffer_size': 100000,
             'batch_size': 64,
             'update_every': 4,
-            'epsilon_start': 1.0,
-            'epsilon_end': 0.05,
-            'epsilon_decay': 0.995,
+            'epsilon_start': 2.0,
+            'epsilon_end': 0.1,
+            'epsilon_decay': 0.997,
         }
     )
-    
+
     # Train the agent
     scores = train_lane_keeping_dqn(
         env,
         agent,
-        n_episodes=1000,
+        n_episodes=10000,
         max_t=1000,
-        target_score=90.0,
+        target_score=2100.0,
         print_every=10,
         save_every=50,
         save_dir="./car_dqn_models"
     )
-    
+
     print("Lane keeping training complete!")

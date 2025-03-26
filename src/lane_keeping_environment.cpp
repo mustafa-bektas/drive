@@ -36,7 +36,15 @@ std::tuple<std::vector<float>, float, bool> LaneKeepingEnvironment::step(Action 
     
     // Apply steering adjustment based on action
     float steeringAdjustment = actionToSteeringAdjustment(action);
-    car.steeringAngle += steeringAdjustment;
+    
+    // Add a steering return-to-center effect (natural steering behavior)
+    // Only apply this when not actively steering hard
+    if (action == MAINTAIN_STEERING) {
+        // Return to center at 30% rate per step
+        car.steeringAngle *= 0.7f;
+    } else {
+        car.steeringAngle += steeringAdjustment;
+    }
     
     // Limit steering angle to the car's configuration limits
     if (car.steeringAngle > car.config.maxSteeringAngle) {
@@ -77,11 +85,10 @@ std::tuple<std::vector<float>, float, bool> LaneKeepingEnvironment::step(Action 
     
     return std::make_tuple(state, reward, done);
 }
-
 float LaneKeepingEnvironment::actionToSteeringAdjustment(Action action) {
-    const float hardTurn = 0.15f;
-    const float mediumTurn = 0.08f;
-    const float gentleTurn = 0.03f;
+    const float hardTurn = 0.05f;
+    const float mediumTurn = 0.025f;
+    const float gentleTurn = 0.01f;
     
     switch(action) {
         case TURN_HARD_LEFT:
@@ -129,8 +136,8 @@ float LaneKeepingEnvironment::calculateReward(const std::vector<float>& state, A
     float reward = 0.0f;
     
     // Reward for staying in the center of the lane
-    float centeringReward = 1.0f - std::abs(state[0]);  // 1.0 at center, 0.0 at edge
-    reward += centeringReward;
+    float centeringReward = std::exp(-2.0f * std::abs(lateralPosition));
+    reward += centeringReward * 2.0f;
     
     // Reward for aligning with the lane direction
     float alignmentReward = 1.0f - std::abs(state[1]);  // 1.0 when aligned, 0.0 at ±1 radian
