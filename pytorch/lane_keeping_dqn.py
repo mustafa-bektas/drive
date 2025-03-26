@@ -71,13 +71,13 @@ class CarSimulation:
         self.position = np.array([0.0, 0.5, 0.0])
         if random_init:
             # Random lateral position within the lane
-            self.position[0] = np.random.uniform(-LANE_PARAMS['lane_width']/2, LANE_PARAMS['lane_width']/2)
+            self.position[0] = np.random.uniform(-LANE_PARAMS['lane_width']/3, LANE_PARAMS['lane_width']/3)
             # Random initial heading
             self.rotation = np.random.uniform(-0.2, 0.2)
 
         self.velocity = np.array([0.0, 0.0, 0.0])
         self.acceleration = np.array([0.0, 0.0, 0.0])
-        self.speed = 40.0  # Constant speed for lane keeping training
+        self.speed = 15.0  # Constant speed for lane keeping training
         self.steering_angle = 0.0
         self.throttle = 0.5
         self.brake = 0.0
@@ -368,10 +368,9 @@ class LaneKeepingEnv:
         reward = 0.0
 
         # Reward for staying in the center of the lane
-        center_distance = abs(self.car.position[0])
-        # Reward for staying in the center of the lane
-        centering_reward = np.exp(-2.0 * center_distance)
-        reward += centering_reward * 2.0  # Higher weight for centering
+        lateral_position = self.car.position[0]
+        centering_reward = np.exp(-5.0 * abs(lateral_position))
+        reward += centering_reward * 2.0
 
         # Reward for aligning with the lane direction
         heading_error = abs(state[1])
@@ -622,7 +621,7 @@ if __name__ == "__main__":
             'buffer_size': 100000,
             'batch_size': 64,
             'update_every': 4,
-            'epsilon_start': 2.0,
+            'epsilon_start': 1.5,
             'epsilon_end': 0.1,
             'epsilon_decay': 0.997,
         }
@@ -634,7 +633,7 @@ if __name__ == "__main__":
         agent,
         n_episodes=10000,
         max_t=1000,
-        target_score=2100.0,
+        target_score=2500.0,
         print_every=10,
         save_every=50,
         save_dir="./car_dqn_models"
