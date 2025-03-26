@@ -1,5 +1,5 @@
-# CarGame Lane Keeping DQN Training
-# ===============================
+# lane keeping dqn training
+# refactor later
 
 import torch
 import torch.nn as nn
@@ -15,14 +15,14 @@ import copy
 from IPython.display import display, clear_output
 import math
 
-# Ensure model directory exists
+# make sure dir exists
 os.makedirs("./car_dqn_models", exist_ok=True)
 
-# Check if GPU is available
+# use gpu if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# Car Physics Parameters
+# car params
 CAR_PARAMS = {
     'width': 1.8,
     'length': 4.5,
@@ -44,13 +44,13 @@ CAR_PARAMS = {
     'idle_rpm': 1000.0,
 }
 
-# Lane Keeping Environment Parameters
+# lane params
 LANE_PARAMS = {
     'lane_width': 10.0,
     'max_lateral_deviation': 5.0,
 }
 
-# Car Simulation Class (simplified for lane keeping)
+# car sim (for lane keeping)
 class CarSimulation:
     def __init__(self, time_step=1.0/60.0):
         self.position = np.array([0.0, 0.5, 0.0])  # x, y, z
@@ -59,7 +59,7 @@ class CarSimulation:
         self.speed = 0.0
         self.rotation = 0.0
         self.steering_angle = 0.0
-        self.throttle = 0.5  # Fixed throttle for lane keeping training
+        self.throttle = 0.5  # fixed for lane keeping
         self.brake = 0.0
         self.time_step = time_step
         self.params = CAR_PARAMS
@@ -67,68 +67,68 @@ class CarSimulation:
         self.yaw_rate = 0.0
 
     def reset(self, random_init=True):
-        # Start with random lateral position and heading for lane keeping training
+        # random lane pos and heading for training
         self.position = np.array([0.0, 0.5, 0.0])
         if random_init:
-            # Random lateral position within the lane
+            # random lane position
             self.position[0] = np.random.uniform(-LANE_PARAMS['lane_width']/3, LANE_PARAMS['lane_width']/3)
-            # Random initial heading
+            # random heading
             self.rotation = np.random.uniform(-0.2, 0.2)
 
         self.velocity = np.array([0.0, 0.0, 0.0])
         self.acceleration = np.array([0.0, 0.0, 0.0])
-        self.speed = 15.0  # Constant speed for lane keeping training
+        self.speed = 15.0  # constant speed for lane keeping
         self.steering_angle = 0.0
         self.throttle = 0.5
         self.brake = 0.0
         self.lateral_velocity = 0.0
         self.yaw_rate = 0.0
 
-        # Initialize velocity based on speed and rotation
-        self.velocity[0] = self.speed * np.sin(self.rotation)  # Lateral component
-        self.velocity[2] = self.speed * np.cos(self.rotation)  # Longitudinal component
+        # init vel based on speed/rotation
+        self.velocity[0] = self.speed * np.sin(self.rotation)  # lateral
+        self.velocity[2] = self.speed * np.cos(self.rotation)  # longit
 
     def update(self):
-        # Simple kinematic update focused on lateral movement
+        # simplified kinematic model for lateral movement
 
-        # Update rotation based on steering angle
-        # This is a simplified model for steering
+        # update rotation from steering
+        # simplified steering model
         self.yaw_rate = self.speed * np.tan(self.steering_angle) / self.params['wheel_base']
         self.rotation += self.yaw_rate * self.time_step
 
-        # Normalize rotation
+        # normalize
         while self.rotation > 2 * np.pi:
             self.rotation -= 2 * np.pi
         while self.rotation < 0:
             self.rotation += 2 * np.pi
 
-        # Compute longitudinal and lateral velocities
-        self.velocity[0] = self.speed * np.sin(self.rotation)  # Lateral component
-        self.velocity[2] = self.speed * np.cos(self.rotation)  # Longitudinal component
+        # longit/lateral velocities
+        self.velocity[0] = self.speed * np.sin(self.rotation)  # lateral
+        self.velocity[2] = self.speed * np.cos(self.rotation)  # longit
 
-        # Update position
+        # update position
         self.position += self.velocity * self.time_step
 
-        # Update lateral velocity for state calculation
+        # update lateral velocity for state
         self.lateral_velocity = self.velocity[0]
 
-# DQN Network
+# dqn network
 class DQNetwork(nn.Module):
     def __init__(self, state_size, action_size, seed=42):
         super(DQNetwork, self).__init__()
         self.seed = torch.manual_seed(seed)
 
-        # Network architecture (similar to the speed control network)
+        # network arch (like speed control network)
         self.fc1 = nn.Linear(state_size, 128)
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, action_size)
 
-        # Initialize weights
+        # init weights
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
-            # Xavier initialization
+            # xavier init
             nn.init.xavier_uniform_(module.weight)
             if module.bias is not None:
                 module.bias.data.fill_(0.01)
@@ -138,7 +138,7 @@ class DQNetwork(nn.Module):
         x = torch.relu(self.fc2(x))
         return self.fc3(x)
 
-# Replay Buffer
+# replay buffer
 class ReplayBuffer:
     def __init__(self, buffer_size, batch_size, seed=42):
         self.batch_size = batch_size
@@ -164,46 +164,46 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.memory)
 
-# DQN Agent
+# dqn agent
 class LaneKeepingDQNAgent:
     def __init__(self, state_size, action_size, config=None):
         self.state_size = state_size
         self.action_size = action_size
 
-        # Default configuration
+        # default config
         self.config = {
-            'gamma': 0.99,             # Discount factor
-            'tau': 0.01,               # Soft update parameter
-            'lr': 0.001,               # Learning rate
-            'buffer_size': 50000,      # Replay buffer size
-            'batch_size': 64,          # Batch size
-            'update_every': 4,         # How often to update the network
-            'epsilon_start': 1.0,      # Starting epsilon for exploration
-            'epsilon_end': 0.05,       # Minimum epsilon
-            'epsilon_decay': 0.995,    # Decay factor
+            'gamma': 0.99,             # discount
+            'tau': 0.01,               # soft update
+            'lr': 0.001,               # learning rate
+            'buffer_size': 50000,      # buffer size
+            'batch_size': 64,          # batch size
+            'update_every': 4,         # update freq
+            'epsilon_start': 1.0,      # start epsilon
+            'epsilon_end': 0.05,       # min epsilon
+            'epsilon_decay': 0.995,    # decay factor
         }
 
-        # Override with provided config
+        # override with config
         if config:
             self.config.update(config)
 
-        # Q-Networks
+        # q-nets
         self.qnetwork_local = DQNetwork(state_size, action_size).to(device)
         self.qnetwork_target = DQNetwork(state_size, action_size).to(device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=self.config['lr'])
 
-        # Replay buffer
+        # replay buffer
         self.memory = ReplayBuffer(self.config['buffer_size'], self.config['batch_size'])
 
-        # Initialize time step (for updating every update_every steps)
+        # time step for updates
         self.t_step = 0
         self.epsilon = self.config['epsilon_start']
 
     def step(self, state, action, reward, next_state, done):
-        # Add experience to replay buffer
+        # add to replay buffer
         self.memory.add(state, action, reward, next_state, done)
 
-        # Learn every update_every time steps
+        # learn every update_every steps
         self.t_step = (self.t_step + 1) % self.config['update_every']
         if self.t_step == 0 and len(self.memory) > self.config['batch_size']:
             experiences = self.memory.sample()
@@ -213,10 +213,10 @@ class LaneKeepingDQNAgent:
         if eps is None:
             eps = self.epsilon
 
-        # Convert state to tensor for neural network
+        # state -> tensor
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
 
-        # Epsilon-greedy action selection
+        # epsilon-greedy
         if random.random() > eps:
             self.qnetwork_local.eval()
             with torch.no_grad():
@@ -229,27 +229,27 @@ class LaneKeepingDQNAgent:
     def learn(self, experiences, gamma):
         states, actions, rewards, next_states, dones = experiences
 
-        # Get max predicted Q values for next states from target model
+        # max q-vals for next states from target
         Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
 
-        # Compute Q targets for current states
+        # q targets for current states
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
 
-        # Get expected Q values from local model
+        # expected q-vals from local model
         Q_expected = self.qnetwork_local(states).gather(1, actions)
 
-        # Compute loss
+        # loss
         loss = nn.functional.mse_loss(Q_expected, Q_targets)
 
-        # Minimize the loss
+        # minimize
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        # Update target network
+        # update target network
         self.soft_update(self.qnetwork_local, self.qnetwork_target, self.config['tau'])
 
-        # Update epsilon
+        # update epsilon
         self.epsilon = max(self.config['epsilon_end'], self.epsilon * self.config['epsilon_decay'])
 
         return loss.item()
@@ -275,7 +275,7 @@ class LaneKeepingDQNAgent:
         self.config = checkpoint['config']
         self.epsilon = checkpoint['epsilon']
 
-# Environment wrapper for Lane Keeping
+# env wrapper for lane keeping
 class LaneKeepingEnv:
     def __init__(self, lane_width=LANE_PARAMS['lane_width'], max_steps=1000):
         self.car = CarSimulation()
@@ -285,7 +285,7 @@ class LaneKeepingEnv:
         self.current_step = 0
         self.last_action = 3  # MAINTAIN_STEERING
 
-        # Define action space
+        # action space - 7 discrete actions
         self.action_size = 7
         self.steering_adjustments = {
             0: 0.05,    # TURN_HARD_LEFT
@@ -306,59 +306,59 @@ class LaneKeepingEnv:
     def step(self, action):
         self.current_step += 1
 
-        # Apply steering adjustment
+        # apply steering adjustment
         steering_adjustment = self.steering_adjustments[action]
-        # Apply steering adjustment
+        # apply adjustment
         if action == 3:  # MAINTAIN_STEERING
-            self.car.steering_angle *= 0.7  # Return to center at 30% rate
+            self.car.steering_angle *= 0.7  # return to center at 30% rate
         else:
             self.car.steering_angle += steering_adjustment
 
-        # Limit steering angle
+        # limit steering angle
         if self.car.steering_angle > self.car.params['max_steering_angle']:
             self.car.steering_angle = self.car.params['max_steering_angle']
         elif self.car.steering_angle < -self.car.params['max_steering_angle']:
             self.car.steering_angle = -self.car.params['max_steering_angle']
 
-        # Update car simulation
+        # update car sim
         self.car.update()
 
-        # Get new state
+        # get new state
         state = self._get_state()
 
-        # Calculate reward
+        # calc reward
         reward = self._calculate_reward(state, action)
 
-        # Check if episode is done
+        # done check
         done = self._is_done()
 
-        # Remember last action
+        # save last action for reward
         self.last_action = action
 
         return state, reward, done, {}
 
     def _get_state(self):
-        """Convert car state to input for neural network"""
+        """state for nn input"""
         state = np.zeros(5)
 
-        # Lateral position from lane center (normalized by lane width)
+        # lat pos from center (normalized by lane width)
         lateral_position = self.car.position[0]
         state[0] = lateral_position / (self.lane_width / 2.0)
 
-        # Heading error (normalized)
-        # Lane is along z-axis so heading error is just the rotation
+        # heading error (normalized)
+        # lane along z-axis so error is just rotation
         heading_error = self.car.rotation
         while heading_error > np.pi: heading_error -= 2.0 * np.pi
         while heading_error < -np.pi: heading_error += 2.0 * np.pi
-        state[1] = heading_error / 1.0  # Normalized to typical range
+        state[1] = heading_error / 1.0  # normalized
 
-        # Lateral velocity (normalized)
+        # lateral velocity (normalized)
         state[2] = self.car.lateral_velocity / 5.0
 
-        # Current steering angle (normalized)
+        # steering angle (normalized)
         state[3] = self.car.steering_angle / self.car.params['max_steering_angle']
 
-        # Distance to nearest lane boundary (normalized)
+        # distance to lane edge (normalized)
         distance_to_boundary = (self.lane_width / 2.0) - abs(lateral_position)
         state[4] = distance_to_boundary / (self.lane_width / 2.0)
 
@@ -367,58 +367,58 @@ class LaneKeepingEnv:
     def _calculate_reward(self, state, action):
         reward = 0.0
 
-        # Reward for staying in the center of the lane
+        # reward for staying centered
         lateral_position = self.car.position[0]
         centering_reward = np.exp(-5.0 * abs(lateral_position))
         reward += centering_reward * 2.0
 
-        # Reward for aligning with the lane direction
+        # reward for alignment with lane
         heading_error = abs(state[1])
         alignment_reward = 1.0 - min(1.0, heading_error)
         reward += alignment_reward
 
-        # Penalize abrupt steering changes
+        # penalize abrupt steering
         if self.last_action != action and action != 3 and self.last_action != 3:
             action_diff = abs(action - self.last_action)
             if action_diff > 2:
                 reward -= 0.5 * (action_diff - 2)
 
-        # Penalize excessive steering angles
+        # penalize extreme steering
         steering_ratio = abs(self.car.steering_angle / self.car.params['max_steering_angle'])
         if steering_ratio > 0.8:
             reward -= 0.5 * (steering_ratio - 0.8) / 0.2
 
-        # Strong penalty for going off the lane
+        # penalty for lane departure
         if abs(self.car.position[0]) > self.max_lateral_deviation:
             reward -= 10.0
 
         return reward
 
     def _is_done(self):
-        # Check if episode is done
+        # max steps reached?
         if self.current_step >= self.max_steps:
             return True
 
-        # Episode is done if car leaves the lane by too much
+        # left lane?
         if abs(self.car.position[0]) > self.max_lateral_deviation:
             return True
 
         return False
 
     def render(self):
-        # Placeholder for rendering, not implemented
+        # placeholder - not implemented
         pass
 
-# Function to export the model to a format usable by C++ code
+# export model for c++ 
 def export_model_for_cpp(model_path, output_path):
-    # Load the PyTorch model
+    # load pytorch model
     checkpoint = torch.load(model_path)
 
-    # Extract model parameters
+    # extract params
     weights = []
     biases = []
 
-    model = DQNetwork(5, 7)  # 5 state dimensions and 7 actions for lane keeping
+    model = DQNetwork(5, 7)  # 5 states, 7 actions for lane keeping
     model.load_state_dict(checkpoint['qnetwork_state_dict'])
 
     for name, param in model.named_parameters():
@@ -427,47 +427,47 @@ def export_model_for_cpp(model_path, output_path):
         elif 'bias' in name:
             biases.append(param.data.cpu().numpy())
 
-    # Export in a simple text format
+    # export in simple text format
     with open(output_path, 'w') as f:
-        # Write network architecture
+        # network architecture
         f.write("network_architecture\n")
 
-        # Input size
+        # input size
         f.write(f"{weights[0].shape[1]}\n")
 
-        # Hidden layers and output layer sizes
+        # hidden and output layer sizes
         for w in weights:
             f.write(f"{w.shape[0]}\n")
 
-        # Weights
+        # weights
         f.write("weights\n")
         for layer_weights in weights:
             for row in layer_weights:
                 f.write(" ".join([str(w) for w in row]) + "\n")
 
-        # Biases
+        # biases
         f.write("biases\n")
         for layer_biases in biases:
             f.write(" ".join([str(b) for b in layer_biases]) + "\n")
 
     print(f"Model exported to {output_path}")
 
-# Training function
+# training function
 def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score=90.0,
                          print_every=10, save_every=100, save_dir="./car_dqn_models"):
 
-    # Create directory for saving models if it doesn't exist
+    # create dir if needed
     os.makedirs(save_dir, exist_ok=True)
 
     scores = []
     scores_window = deque(maxlen=100)
 
-    # For plotting
+    # plot stuff
     all_rewards = []
     all_epsilons = []
     all_lateral_positions = []
 
-    # Time tracking
+    # timing
     start_time = time.time()
     best_score = -np.inf
 
@@ -477,36 +477,36 @@ def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score
         lateral_positions = []
 
         for t in range(max_t):
-            # Select and perform an action
+            # action
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
 
-            # Store experience in replay memory and learn
+            # store exp & learn
             agent.step(state, action, reward, next_state, done)
 
-            # Track lateral position
+            # track lat pos
             lateral_positions.append(env.car.position[0])
 
-            # Update state and score
+            # update
             state = next_state
             score += reward
 
             if done:
                 break
 
-        # Save scores
+        # save scores
         scores.append(score)
         scores_window.append(score)
 
-        # Calculate average lateral position
+        # average lateral position
         avg_lateral_position = np.mean([abs(pos) for pos in lateral_positions])
 
-        # Save metrics for plotting
+        # save plot metrics
         all_rewards.append(score)
         all_epsilons.append(agent.epsilon)
         all_lateral_positions.append(avg_lateral_position)
 
-        # Print progress
+        # print progress
         if i_episode % print_every == 0:
             mean_score = np.mean(scores_window)
             elapsed = time.time() - start_time
@@ -516,52 +516,52 @@ def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score
                   f"Avg Lateral Position: {avg_lateral_position:.2f} m | "
                   f"Elapsed: {elapsed:.1f}s")
 
-            # Plot progress
+            # plot progress
             clear_output(wait=True)
             plot_training_progress(all_rewards, all_lateral_positions, all_epsilons)
 
-            # Save model if we have a new best score
+            # save if new best
             if mean_score > best_score:
                 best_score = mean_score
                 agent.save(f"{save_dir}/best_lane_keeping_model.pth")
                 print(f"New best model saved with score: {best_score:.2f}")
 
-                # Export this model for C++
+                # export for c++
                 export_model_for_cpp(f"{save_dir}/best_lane_keeping_model.pth",
                                    f"{save_dir}/best_lane_keeping_model_for_cpp.txt")
                 print(f"Best model exported for C++: {save_dir}/best_lane_keeping_model_for_cpp.txt")
 
-        # Save checkpoint periodically
+        # checkpoint
         if i_episode == 1 or i_episode % save_every == 0 or i_episode == n_episodes:
             checkpoint_path = f"{save_dir}/lane_keeping_checkpoint_{i_episode}.pth"
             agent.save(checkpoint_path)
             print(f"Checkpoint saved: {checkpoint_path}")
 
-            # Also export this model for C++
+            # export for c++
             export_path = f"{save_dir}/lane_keeping_model_for_cpp_ep{i_episode}.txt"
             export_model_for_cpp(checkpoint_path, export_path)
             print(f"Model exported for C++: {export_path}")
 
-        # Check if we've solved the environment
+        # solved?
         if np.mean(scores_window) >= target_score and len(scores_window) >= 100:
             print(f"\nEnvironment solved in {i_episode} episodes! Average Score: {np.mean(scores_window):.2f}")
             agent.save(f"{save_dir}/lane_keeping_solved_model.pth")
 
-            # Export this model for C++
+            # export for c++
             export_model_for_cpp(f"{save_dir}/lane_keeping_solved_model.pth",
                                f"{save_dir}/lane_keeping_solved_model_for_cpp.txt")
             print(f"Solved model exported for C++: {save_dir}/lane_keeping_solved_model_for_cpp.txt")
             break
 
-    # Save final model
+    # save final model
     agent.save(f"{save_dir}/lane_keeping_final_model.pth")
 
-    # Export final model for C++
+    # export final c++ model
     export_model_for_cpp(f"{save_dir}/lane_keeping_final_model.pth",
                        f"{save_dir}/lane_keeping_final_model_for_cpp.txt")
     print(f"Final model exported for C++: {save_dir}/lane_keeping_final_model_for_cpp.txt")
 
-    # Save training stats
+    # save training stats
     np.save(f"{save_dir}/lane_keeping_training_stats.npy",
             {'rewards': all_rewards, 'lateral_positions': all_lateral_positions, 'epsilons': all_epsilons})
 
@@ -570,23 +570,23 @@ def train_lane_keeping_dqn(env, agent, n_episodes=1000, max_t=1000, target_score
 
     return scores
 
-# Function to plot training progress
+# plot training progress
 def plot_training_progress(rewards, lateral_positions, epsilons):
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
 
-    # Plot rewards
+    # rewards
     ax1.plot(rewards)
     ax1.set_title('Episode Rewards')
     ax1.set_xlabel('Episode')
     ax1.set_ylabel('Reward')
 
-    # Plot moving average of rewards
+    # moving avg rewards
     window_size = min(100, len(rewards))
     if window_size > 0:
         moving_avg = np.convolve(rewards, np.ones(window_size)/window_size, mode='valid')
         ax1.plot(moving_avg, color='red')
 
-    # Plot lateral positions
+    # lateral positions
     ax2.plot(lateral_positions)
     ax2.axhline(y=0, color='r', linestyle='--', label='Lane Center')
     ax2.set_title('Average Lateral Position per Episode')
@@ -594,7 +594,7 @@ def plot_training_progress(rewards, lateral_positions, epsilons):
     ax2.set_ylabel('Lateral Position (m)')
     ax2.legend()
 
-    # Plot epsilon
+    # epsilon
     ax3.plot(epsilons)
     ax3.set_title('Exploration Rate (Epsilon)')
     ax3.set_xlabel('Episode')
@@ -603,17 +603,17 @@ def plot_training_progress(rewards, lateral_positions, epsilons):
     plt.tight_layout()
     plt.show()
 
-# Main execution block
+# main code
 if __name__ == "__main__":
-    # Ensure model directory exists
+    # ensure dir exists
     os.makedirs("./car_dqn_models", exist_ok=True)
 
-    # Create environment and agent
+    # create env and agent
     env = LaneKeepingEnv()
 
     agent = LaneKeepingDQNAgent(
-        state_size=5,       # 5 state dimensions for lane keeping
-        action_size=7,      # 7 discrete steering actions
+        state_size=5,       # 5 states for lane keeping
+        action_size=7,      # 7 steering actions
         config={
             'gamma': 0.98,
             'tau': 0.01,
@@ -627,7 +627,7 @@ if __name__ == "__main__":
         }
     )
 
-    # Train the agent
+    # train agent
     scores = train_lane_keeping_dqn(
         env,
         agent,
