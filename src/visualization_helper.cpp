@@ -44,14 +44,14 @@ void VisualizationHelper::drawUI(const Car& car, float currentSpeed, float targe
     int screenHeight = GetScreenHeight();
     
     // top-left info panel
-    drawCompactInfoPanel(10, 10, 300, 65, car, currentSpeed, targetSpeed, 
-                       simulationSpeed, paused, modelLoaded);
+    //drawCompactInfoPanel(10, 10, 300, 65, car, currentSpeed, targetSpeed, 
+    //                   simulationSpeed, paused, modelLoaded);
     
     // bottom-left speed graph
     drawCompactSpeedGraph(10, screenHeight - 110, 280, 100, targetSpeed);
     
     // help at bottom
-    drawMinimalHelp(10, screenHeight - 25, "SPACE: Pause | R: Reset | PgUp/PgDn: Speed | L: Lane Keeping | TAB: Toggle UI | F: Fullscreen | ESC: Exit");
+    //drawMinimalHelp(10, screenHeight - 25, "SPACE: Pause | R: Reset | PgUp/PgDn: Speed | L: Lane Keeping | TAB: Toggle UI | F: Fullscreen | ESC: Exit");
 }
 
 void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool laneKeepingActive) {
@@ -65,7 +65,7 @@ void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool lan
     // top-right lane info
     int panelWidth = 280;
     int panelHeight = 120;
-    int x = screenWidth - panelWidth - 10;
+    int x = 10;
     int y = 10;
     
     // bg panel

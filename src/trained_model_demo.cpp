@@ -17,7 +17,7 @@ using namespace CarGame;
 
 int main(int argc, char* argv[]) {
     // cli args
-    std::string speedModelFile = "models/best_model_for_cpp.txt";
+    std::string speedModelFile = "models/curriculum_final_model.txt";
     std::string laneModelFile = "models/best_lane_keeping_model_for_cpp.txt";
     float targetSpeed = 50.0f / 3.6f;  // 50 km/h in m/s
     bool enableLaneKeeping = true;
@@ -223,8 +223,8 @@ int main(int argc, char* argv[]) {
                 // lane status
                 const char* laneKeepingStatus = laneKeepingActive ? "Lane Keeping: ON (L to toggle)" : 
                                                               "Lane Keeping: OFF (L to toggle)";
-                DrawText(laneKeepingStatus, 10, GetScreenHeight() - 50, 20, 
-                        laneKeepingActive ? DARKGREEN : DARKGRAY);
+                //DrawText(laneKeepingStatus, 10, GetScreenHeight() - 50, 20, 
+                //        laneKeepingActive ? DARKGREEN : DARKGRAY);
             }
             
         EndDrawing();

@@ -61,24 +61,23 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         DrawPlane(floorPosition, { groundSize, groundSize }, GREEN);
         
         // road with lanes
-        const float roadWidth = 20.0f;
         const float laneWidth = 10.0f;
+        const float roadWidth = 3 * laneWidth; // 30.0f for three lanes
         
         // road surface
         DrawCube({0, 0.01f, 0}, roadWidth, 0.01f, groundSize, DARKGRAY);
         
-        // lane center (dashed)
-        for (int i = -groundSize/2; i < groundSize/2; i += 5) {
-            DrawCube({0, 0.02f, float(i)}, 0.5f, 0.01f, 2.0f, YELLOW);
+        // lane dividers (dashed lines) at x = -10 and x = 10
+        for (int i = -groundSize/2; i < groundSize/2; i += 8) {
+            // Left lane divider
+            DrawCube({-laneWidth/2, 0.02f, float(i)}, 0.5f, 0.01f, 4.0f, WHITE);
+            // Right lane divider
+            DrawCube({laneWidth/2, 0.02f, float(i)}, 0.5f, 0.01f, 4.0f, WHITE);
         }
         
-        // lane edges
-        DrawCube({-laneWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
-        DrawCube({laneWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, WHITE);
-        
         // road edges
-        DrawCube({-roadWidth/2, 0.02f, 0}, 0.5f, 0.01f, groundSize, RED);
-        DrawCube({roadWidth/2, 0.02f, 0}, 0.5f, 0.01f, groundSize, RED);
+        DrawCube({-roadWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, RED); // Left edge
+        DrawCube({roadWidth/2, 0.02f, 0}, 0.3f, 0.01f, groundSize, RED);  // Right edge
         
         // grid for reference
         for (int i = -gridSpacing; i <= gridSpacing; i++) {
@@ -95,15 +94,15 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             );
         }
         
-        // trees on road sides
+        // trees on road sides (update position to be outside the wider road)
         for (int i = -groundSize/2; i <= groundSize/2; i += 20) {
-            // left trees
-            DrawCylinder({-15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
-            DrawSphere({-15, 5.0f, float(i)}, 3.0f, DARKGREEN);
+            // left trees (moved further left)
+            DrawCylinder({-20, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
+            DrawSphere({-20, 5.0f, float(i)}, 3.0f, DARKGREEN);
             
-            // right trees
-            DrawCylinder({15, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
-            DrawSphere({15, 5.0f, float(i)}, 3.0f, DARKGREEN);
+            // right trees (moved further right)
+            DrawCylinder({20, 0, float(i)}, 0.5f, 0.5f, 5.0f, 8, BROWN);
+            DrawSphere({20, 5.0f, float(i)}, 3.0f, DARKGREEN);
         }
         
         // draw car
