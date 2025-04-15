@@ -110,7 +110,7 @@ void Car::updateLongitudinalPhysics(float deltaTime) {
         clutch = true;
     } else {
         float wheelRPM = std::abs(speed) / config.tireRadius * config.gearRatio * (60.0f / (2.0f * PI));
-        engineSpeed = std::max(idleRPM, wheelRPM);
+        engineSpeed = std::fmax(idleRPM, wheelRPM);
     }
     
     if (!clutch)
@@ -194,7 +194,7 @@ float Car::calculateSlipRatio(float wheelLinearSpeed, float vehicleSpeed) const 
         result = (wheelLinearSpeed - vehicleSpeed) / speedAbs;
     }
     
-    result = std::max(-1.0f, std::min(result, 1.0f));
+    result = std::fmax(-1.0f, std::fmin(result, 1.0f));
     return result;
 }
 
@@ -263,8 +263,8 @@ void Car::updateLateralPhysics(float deltaTime) {
     normalLoadRear += loadTransferLong;
     
     const float MIN_LOAD = 500.0f;
-    normalLoadFront = std::max(MIN_LOAD, normalLoadFront);
-    normalLoadRear = std::max(MIN_LOAD, normalLoadRear);
+    normalLoadFront = std::fmax(MIN_LOAD, normalLoadFront);
+    normalLoadRear = std::fmax(MIN_LOAD, normalLoadRear);
     
     lateralForceFront = 1 * calculatePacejkaLateral(slipAngleFront, normalLoadFront, true);
     lateralForceRear = 1 * calculatePacejkaLateral(slipAngleRear, normalLoadRear, false);
@@ -284,8 +284,8 @@ void Car::updateLateralPhysics(float deltaTime) {
     const float MAX_LATERAL_ACCEL = 40.0f;
     const float MAX_YAW_ACCEL = 10.0f;
     
-    lateralAcceleration = std::max(-MAX_LATERAL_ACCEL, std::min(lateralAcceleration, MAX_LATERAL_ACCEL));
-    yawAcceleration = std::max(-MAX_YAW_ACCEL, std::min(yawAcceleration, MAX_YAW_ACCEL));
+    lateralAcceleration = std::fmax(-MAX_LATERAL_ACCEL, std::fmin(lateralAcceleration, MAX_LATERAL_ACCEL));
+    yawAcceleration = std::fmax(-MAX_YAW_ACCEL, std::fmin(yawAcceleration, MAX_YAW_ACCEL));
     
     lateralVelocity += lateralAcceleration * deltaTime;
     yawRate += yawAcceleration * deltaTime;
@@ -293,8 +293,8 @@ void Car::updateLateralPhysics(float deltaTime) {
     const float MAX_LATERAL_VEL = 20.0f;
     const float MAX_YAW_RATE = 2.0f;
     
-    lateralVelocity = std::max(-MAX_LATERAL_VEL, std::min(lateralVelocity, MAX_LATERAL_VEL));
-    yawRate = std::max(-MAX_YAW_RATE, std::min(yawRate, MAX_YAW_RATE));
+    lateralVelocity = std::fmax(-MAX_LATERAL_VEL, std::fmin(lateralVelocity, MAX_LATERAL_VEL));
+    yawRate = std::fmax(-MAX_YAW_RATE, std::fmin(yawRate, MAX_YAW_RATE));
     
     rotation += yawRate * deltaTime;
     normalizeRotation();
