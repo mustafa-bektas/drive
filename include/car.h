@@ -26,10 +26,10 @@ public:
         float mass = 1600,
         float corneringStiffnessFront = 50000.0f,
         float corneringStiffnessRear = 40000.0f,
-        float pacejkaB_lat = 10.0f,  
-        float pacejkaC_lat = 1.3f,    
+        float pacejkaB_lat = 12.0f,  // Match updated default
+        float pacejkaC_lat = 1.6f,    // Match updated default
         float pacejkaD_lat = 1.0f,   
-        float pacejkaE_lat = 1,   
+        float pacejkaE_lat = 1.0f,   // Match updated default (float)
         float frontWeight = 0.55f,    
         float normalLoadFront = 4000.0f, 
         float normalLoadRear = 3800.0f,  

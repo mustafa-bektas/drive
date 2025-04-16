@@ -2,6 +2,7 @@
 #include "car.h"
 #include <utility>
 #include <cstdio>
+#include <algorithm>
 
 namespace CarGame {
 
@@ -23,11 +24,11 @@ CarPhysicsConfig::CarPhysicsConfig(
     float corneringStiffnessFront,
     float corneringStiffnessRear,
     float pacejkaB_lat,
-    float pacejkaC_lat,
-    float pacejkaD_lat,
+    float pacejkaC_lat,   
+    float pacejkaD_lat,   
     float pacejkaE_lat,
     float frontWeight,
-    float normalLoadFront,
+    float normalLoadFront, 
     float normalLoadRear,
     float heightCG
 )
@@ -265,13 +266,35 @@ void Car::updateLateralPhysics(float deltaTime) {
     const float MIN_LOAD = 500.0f;
     normalLoadFront = std::fmax(MIN_LOAD, normalLoadFront);
     normalLoadRear = std::fmax(MIN_LOAD, normalLoadRear);
-    
-    lateralForceFront = 1 * calculatePacejkaLateral(slipAngleFront, normalLoadFront, true);
-    lateralForceRear = 1 * calculatePacejkaLateral(slipAngleRear, normalLoadRear, false);
-    
+
+    lateralForceFront = calculatePacejkaLateral(slipAngleFront, normalLoadFront, true);
+    lateralForceRear = calculatePacejkaLateral(slipAngleRear, normalLoadRear, false);
+
+    float initialTotalLateralForce = lateralForceFront + lateralForceRear;
+    lateralAcceleration = initialTotalLateralForce / config.mass;
+
+    float trackWidthEstimate = config.width * 0.8f;
+    if (trackWidthEstimate < 0.1f) trackWidthEstimate = 0.1f;
+    float loadTransferLat = std::abs(config.mass * lateralAcceleration * config.heightCG / trackWidthEstimate);
+
+    float frontStaticLoad = config.mass * 9.81f * config.frontWeight;
+    float rearStaticLoad = config.mass * 9.81f * (1.0f - config.frontWeight);
+    if (frontStaticLoad < 1.0f) frontStaticLoad = 1.0f;
+    if (rearStaticLoad < 1.0f) rearStaticLoad = 1.0f;
+
+    float frontLoadTransferRatio = std::min(1.0f, loadTransferLat / frontStaticLoad);
+    float rearLoadTransferRatio = std::min(1.0f, loadTransferLat / rearStaticLoad);
+
+    const float MAX_GRIP_REDUCTION_FACTOR = 0.4f;
+    float frontForceReduction = 1.0f - MAX_GRIP_REDUCTION_FACTOR * frontLoadTransferRatio;
+    float rearForceReduction = 1.0f - MAX_GRIP_REDUCTION_FACTOR * rearLoadTransferRatio;
+
+    lateralForceFront *= frontForceReduction;
+    lateralForceRear *= rearForceReduction;
+
     float totalLateralForce = lateralForceFront + lateralForceRear;
     yawMoment = lateralForceFront * config.frontAxleDistance - lateralForceRear * config.rearAxleDistance;
-    
+        
     lateralAcceleration = totalLateralForce / config.mass;
     float yawAcceleration = yawMoment / yawInertia;
     
