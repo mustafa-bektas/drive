@@ -126,7 +126,6 @@ void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool lan
     // Normalize position relative to the lane width centered at 0
     float normalizedPos = (lateralPosition / (laneWidth / 2.0f) + 1.0f) / 2.0f; // Map [-width/2, +width/2] to [0, 1]
     int carPosX = x + static_cast<int>(normalizedPos * indicatorWidth);
-    // Clamp position indicator within the panel bounds (using std::max/min for C++ < 17 compatibility)
     carPosX = std::max(x + 5, std::min(carPosX, x + indicatorWidth - 5));
 
     DrawTriangle(

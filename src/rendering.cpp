@@ -1,8 +1,7 @@
 #include "../include/rendering.h"
-#include "../include/road_geometry.h" // Include road geometry
-#include "raylib.h" // Include the main Raylib header for DrawCubePro etc.
-// #include "models.h" // Removed - File does not exist and DrawCubePro is in raylib.h
-#include "raymath.h" // Include for math functions like Vector3Add, Vector3Scale, etc.
+#include "../include/road_geometry.h"
+#include "raylib.h"
+#include "raymath.h"
 #include <string>
 #include <array>
 #include <vector>
@@ -64,35 +63,34 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
         // ground plane
         DrawPlane(floorPosition, { groundSize, groundSize }, GREEN);
 
-        // --- Draw Curved Road ---
-        const float laneWidth = 7.5f; // Reduced from 10.0f
-        const float roadWidth = 3 * laneWidth; // Total width is now 22.5f
-        const float segmentLength = 2.0f; // Draw the road in segments
-        const float roadThickness = 0.02f; // How thick the road surface/lines are
+        // draw curved road
+        const float laneWidth = 7.5f; // narrower lanes 
+        const float roadWidth = 3 * laneWidth; // three lanes total
+        const float segmentLength = 2.0f; // segment size for drawing
+        const float roadThickness = 0.02f; // road height from ground
 
         for (float z = -groundSize / 2.0f; z < groundSize / 2.0f; z += segmentLength) {
-            float currentCenterZ = z + segmentLength / 2.0f; // Center Z of the segment
+            float currentCenterZ = z + segmentLength / 2.0f; // middle z of segment
             float nextCenterZ = z + segmentLength + segmentLength / 2.0f;
 
-            // Get centerline X and tangent angle for the start of the segment
+            // get road curve position and angle
             float currentCenterX = RoadGeometry::getRoadCenterlineX(currentCenterZ);
-            float currentAngle = RoadGeometry::getRoadTangentAngle(currentCenterZ); // Angle in radians
+            float currentAngle = RoadGeometry::getRoadTangentAngle(currentCenterZ); // in radians
 
-            // Calculate segment position and orientation
+            // position and rotation
             Vector3 segmentCenter = { currentCenterX, roadThickness / 2.0f, currentCenterZ };
-            Vector3 rotationAxis = { 0.0f, 1.0f, 0.0f }; // Rotate around Y-axis
+            Vector3 rotationAxis = { 0.0f, 1.0f, 0.0f }; // y-axis rotation
             float rotationAngleDegrees = currentAngle * RAD2DEG;
 
-            // --- Draw using GenMeshCube and DrawMesh as workaround for DrawCubePro ---
-            // Generate meshes for this segment
+            // create meshes for road parts
             Mesh roadSegmentMesh = GenMeshCube(roadWidth, roadThickness, segmentLength);
             Mesh dividerSegmentMesh = GenMeshCube(0.5f, roadThickness, segmentLength);
             Mesh edgeSegmentMesh = GenMeshCube(0.3f, roadThickness, segmentLength);
 
-            // Calculate transformation matrix for the segment
+            // transform for this segment
             Matrix segmentTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(segmentCenter.x, segmentCenter.y, segmentCenter.z));
 
-            // Load materials with correct colors
+            // set up materials and colors
             Material roadMaterial = LoadMaterialDefault();
             roadMaterial.maps[MATERIAL_MAP_DIFFUSE].color = DARKGRAY;
             Material dividerMaterial = LoadMaterialDefault();
@@ -100,57 +98,56 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             Material edgeMaterial = LoadMaterialDefault();
             edgeMaterial.maps[MATERIAL_MAP_DIFFUSE].color = RED;
 
-
-            // Draw road surface segment using DrawMesh with the correct material
+            // draw main road surface
             DrawMesh(roadSegmentMesh, roadMaterial, segmentTransform);
 
-            // Calculate positions for lane dividers relative to the segment center and angle
+            // calculate direction vectors
             Vector2 tangent = RoadGeometry::getRoadTangentVector(currentCenterZ);
-            Vector2 normal = RoadGeometry::getRoadNormalVector(currentCenterZ); // Perpendicular vector
+            Vector2 normal = RoadGeometry::getRoadNormalVector(currentCenterZ); // perpendicular to road
 
-            // Left divider position
+            // left lane divider
             Vector3 leftDividerOffset = { normal.x * (laneWidth / 2.0f), 0.0f, normal.y * (laneWidth / 2.0f) };
             Vector3 leftDividerPos = Vector3Add(segmentCenter, leftDividerOffset);
-            leftDividerPos.y += roadThickness / 2.0f; // Place slightly above road surface
+            leftDividerPos.y += roadThickness / 2.0f; // slightly above road
 
-            // Right divider position
+            // right lane divider
             Vector3 rightDividerOffset = { normal.x * (-laneWidth / 2.0f), 0.0f, normal.y * (-laneWidth / 2.0f) };
             Vector3 rightDividerPos = Vector3Add(segmentCenter, rightDividerOffset);
-            rightDividerPos.y += roadThickness / 2.0f; // Place slightly above road surface
+            rightDividerPos.y += roadThickness / 2.0f; // slightly above road
 
-            // Draw dashed lane dividers (draw only every few segments)
-            if (static_cast<int>(z / segmentLength) % 4 < 2) { // Simple dashed effect
+            // make dashed lines
+            if (static_cast<int>(z / segmentLength) % 4 < 2) { // skip every other set
                  Matrix leftDividerTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(leftDividerPos.x, leftDividerPos.y, leftDividerPos.z));
                  Matrix rightDividerTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(rightDividerPos.x, rightDividerPos.y, rightDividerPos.z));
-                 DrawMesh(dividerSegmentMesh, dividerMaterial, leftDividerTransform); // Use divider material
-                 DrawMesh(dividerSegmentMesh, dividerMaterial, rightDividerTransform); // Use divider material
+                 DrawMesh(dividerSegmentMesh, dividerMaterial, leftDividerTransform); 
+                 DrawMesh(dividerSegmentMesh, dividerMaterial, rightDividerTransform);
             }
 
-            // Calculate positions for road edges
+            // left edge position
             Vector3 leftEdgeOffset = { normal.x * (roadWidth / 2.0f), 0.0f, normal.y * (roadWidth / 2.0f) };
             Vector3 leftEdgePos = Vector3Add(segmentCenter, leftEdgeOffset);
             leftEdgePos.y += roadThickness / 2.0f;
 
+            // right edge position
             Vector3 rightEdgeOffset = { normal.x * (-roadWidth / 2.0f), 0.0f, normal.y * (-roadWidth / 2.0f) };
             Vector3 rightEdgePos = Vector3Add(segmentCenter, rightEdgeOffset);
             rightEdgePos.y += roadThickness / 2.0f;
 
-            // Draw road edges
+            // draw road edges
             Matrix leftEdgeTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(leftEdgePos.x, leftEdgePos.y, leftEdgePos.z));
             Matrix rightEdgeTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(rightEdgePos.x, rightEdgePos.y, rightEdgePos.z));
-            DrawMesh(edgeSegmentMesh, edgeMaterial, leftEdgeTransform); // Use edge material
-            DrawMesh(edgeSegmentMesh, edgeMaterial, rightEdgeTransform); // Use edge material
+            DrawMesh(edgeSegmentMesh, edgeMaterial, leftEdgeTransform); 
+            DrawMesh(edgeSegmentMesh, edgeMaterial, rightEdgeTransform);
 
-            // Unload temporary meshes and materials to avoid memory leaks
+            // clean up resources
             UnloadMesh(roadSegmentMesh);
             UnloadMesh(dividerSegmentMesh);
             UnloadMesh(edgeSegmentMesh);
-            UnloadMaterial(roadMaterial); // Unload material
-            UnloadMaterial(dividerMaterial); // Unload material
-            UnloadMaterial(edgeMaterial); // Unload material
-            // --- End Draw using GenMeshCube ---
+            UnloadMaterial(roadMaterial);
+            UnloadMaterial(dividerMaterial);
+            UnloadMaterial(edgeMaterial);
         }
-        // --- End Curved Road ---
+        // end of road drawing
 
         // grid for reference (optional, can be kept or removed)
         for (int i = -gridSpacing; i <= gridSpacing; i++) {

@@ -1,8 +1,8 @@
 #include "lane_keeping_environment.h"
-#include "road_geometry.h" // Include the new road geometry header
+#include "road_geometry.h"
 #include <algorithm>
 #include <cmath>
-#include "raymath.h" // For Vector2DotProduct
+#include "raymath.h"
 
 namespace CarGame {
 
@@ -163,20 +163,15 @@ float LaneKeepingEnvironment::calculateReward(const std::vector<float>& state, A
 }
 
 float LaneKeepingEnvironment::getLateralPosition(const Car& car) const {
-    // Calculate the road centerline X at the car's current Z position
     float roadCenterX = RoadGeometry::getRoadCenterlineX(car.position.z);
-    // Lateral position is the difference between the car's X and the road's center X
     return car.position.x - roadCenterX;
 }
 
 float LaneKeepingEnvironment::getHeadingError(const Car& car) const {
-    // Get the actual direction (tangent angle) of the lane at the car's Z position
     float laneDirection = RoadGeometry::getRoadTangentAngle(car.position.z);
 
-    // Calculate the difference between the car's rotation and the lane direction
     float error = car.rotation - laneDirection;
 
-    // Normalize the error to the range [-PI, PI]
     while (error > PI) error -= 2.0f * PI;
     while (error < -PI) error += 2.0f * PI;
     
@@ -184,14 +179,9 @@ float LaneKeepingEnvironment::getHeadingError(const Car& car) const {
 }
 
 float LaneKeepingEnvironment::getLateralVelocity(const Car& car) const {
-    // Get the road's normal vector (perpendicular to the direction of travel) at the car's Z position
     Vector2 roadNormal = RoadGeometry::getRoadNormalVector(car.position.z);
 
-    // Get the car's velocity vector in the XZ plane
     Vector2 carVelocityXZ = {car.velocity.x, car.velocity.z};
-
-    // Project the car's velocity vector onto the road's normal vector
-    // This gives the component of velocity that is perpendicular to the lane direction (i.e., lateral velocity)
     return Vector2DotProduct(carVelocityXZ, roadNormal);
 }
 

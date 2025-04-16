@@ -20,8 +20,8 @@ public:
         
         // defaults
         Config() 
-            : laneWidth(7.5f), // Reduced from 10.0f
-              maxLateralDeviation(3.75f), // Also reduce max deviation proportionally (0.75 * 5.0f)
+            : laneWidth(7.5f),
+              maxLateralDeviation(3.75f),
               maxEpisodeSteps(1000),
               timeStep(1.0f / 60.0f),
               actionSpace(7)
