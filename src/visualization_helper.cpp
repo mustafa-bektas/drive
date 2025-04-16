@@ -123,8 +123,7 @@ void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool lan
     DrawRectangle(laneRight, indicatorY, 5, indicatorHeight, WHITE);
     
     // car position indicator (visualize relative position within the lane width)
-    // Normalize position relative to the lane width centered at 0
-    float normalizedPos = (lateralPosition / (laneWidth / 2.0f) + 1.0f) / 2.0f; // Map [-width/2, +width/2] to [0, 1]
+    float normalizedPos = (1.0f - lateralPosition / (laneWidth / 2.0f)) / 2.0f; // Map [-width/2, +width/2] to [1, 0] effectively
     int carPosX = x + static_cast<int>(normalizedPos * indicatorWidth);
     carPosX = std::max(x + 5, std::min(carPosX, x + indicatorWidth - 5));
 
