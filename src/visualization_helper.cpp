@@ -1,4 +1,5 @@
 #include "../include/visualization_helper.h"
+#include "../include/road_geometry.h" // Include road geometry
 #include <numeric>
 #include <algorithm>
 #include <cmath>
@@ -74,30 +75,29 @@ void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool lan
     // title
     Color titleColor = laneKeepingActive ? DARKGREEN : DARKBLUE;
     DrawText("Lane Position", x + 10, y + 5, 16, titleColor);
-    
-    // lane metrics
-    float lateralPosition = car.position.x;
-    float laneCenter = 0.0f;
-    float laneEdgeLeft = laneCenter - laneWidth/2;
-    float laneEdgeRight = laneCenter + laneWidth/2;
-    
+
+    // lane metrics using RoadGeometry
+    float laneCenter = RoadGeometry::getRoadCenterlineX(car.position.z); // Get true center X
+    float lateralPosition = car.position.x - laneCenter; // Position relative to true center
+    float laneEdgeLeft = -laneWidth / 2.0f; // Relative edge position
+    float laneEdgeRight = laneWidth / 2.0f; // Relative edge position
+
     // text metrics
-    DrawText(TextFormat("Position: %.2f m", lateralPosition), x + 10, y + 30, 15, BLACK);
-    DrawText(TextFormat("Lane Width: %.1f m", laneWidth), x + 10, y + 50, 15, BLACK);
-    DrawText(TextFormat("Distance to Center: %.2f m", std::abs(lateralPosition - laneCenter)), 
-             x + 10, y + 70, 15, BLACK);
-    
-    // lane status
+    DrawText(TextFormat("Car X: %.2f m", car.position.x), x + 10, y + 30, 15, BLACK);
+    DrawText(TextFormat("Lane Center X: %.2f m", laneCenter), x + 10, y + 50, 15, BLACK);
+    DrawText(TextFormat("Lateral Dev: %.2f m", lateralPosition), x + 10, y + 70, 15, BLACK);
+
+    // lane status (using relative lateralPosition)
     const char* statusText;
     Color statusColor;
-    
-    if (std::abs(lateralPosition) < 0.5f) {
+
+    if (std::abs(lateralPosition) < 0.5f) { // Check deviation from center
         statusText = "Status: CENTERED";
         statusColor = DARKGREEN;
-    } else if (std::abs(lateralPosition) < laneWidth/2) {
+    } else if (std::abs(lateralPosition) < laneWidth / 2.0f) { // Check if within lane width
         statusText = "Status: IN LANE";
         statusColor = BLUE;
-    } else {
+    } else { // Outside lane width
         statusText = "Status: OUT OF LANE";
         statusColor = RED;
     }
@@ -122,10 +122,13 @@ void VisualizationHelper::drawLaneInfo(const Car& car, float laneWidth, bool lan
     DrawRectangle(laneLeft, indicatorY, 5, indicatorHeight, WHITE);
     DrawRectangle(laneRight, indicatorY, 5, indicatorHeight, WHITE);
     
-    // car position indicator
-    float normalizedPos = (lateralPosition - laneEdgeLeft) / laneWidth;
+    // car position indicator (visualize relative position within the lane width)
+    // Normalize position relative to the lane width centered at 0
+    float normalizedPos = (lateralPosition / (laneWidth / 2.0f) + 1.0f) / 2.0f; // Map [-width/2, +width/2] to [0, 1]
     int carPosX = x + static_cast<int>(normalizedPos * indicatorWidth);
-    
+    // Clamp position indicator within the panel bounds (using std::max/min for C++ < 17 compatibility)
+    carPosX = std::max(x + 5, std::min(carPosX, x + indicatorWidth - 5));
+
     DrawTriangle(
         {static_cast<float>(carPosX), static_cast<float>(indicatorY)},
         {static_cast<float>(carPosX - 10), static_cast<float>(indicatorY + indicatorHeight)},
