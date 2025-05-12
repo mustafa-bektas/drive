@@ -34,6 +34,14 @@ Renderer::Renderer() = default;
 
 Renderer::~Renderer() {
     UnloadModel(carModel);
+
+    // Unload cached road resources
+    UnloadMesh(roadSegmentMesh);
+    UnloadMesh(dividerSegmentMesh);
+    UnloadMesh(edgeSegmentMesh);
+    UnloadMaterial(roadMaterial);
+    UnloadMaterial(dividerMaterial);
+    UnloadMaterial(edgeMaterial);
 }
 
 void Renderer::initialize(const Car& car) {
@@ -43,6 +51,25 @@ void Renderer::initialize(const Car& car) {
         car.config.height, 
         car.config.length
     ));
+
+    // Initialize cached road resources
+    // Dimensions from draw3DScene loop
+    const float laneWidth = 7.5f; 
+    const float roadWidth = 3 * laneWidth; 
+    const float segmentLength = 2.0f; 
+    const float roadThickness = 0.02f;
+    const float segmentOverlap = 0.7f; // Small overlap to close gaps
+
+    roadSegmentMesh = GenMeshCube(roadWidth, roadThickness, segmentLength + segmentOverlap);
+    dividerSegmentMesh = GenMeshCube(0.5f, roadThickness, segmentLength + segmentOverlap);
+    edgeSegmentMesh = GenMeshCube(0.3f, roadThickness, segmentLength + segmentOverlap);
+
+    roadMaterial = LoadMaterialDefault();
+    roadMaterial.maps[MATERIAL_MAP_DIFFUSE].color = DARKGRAY;
+    dividerMaterial = LoadMaterialDefault();
+    dividerMaterial.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
+    edgeMaterial = LoadMaterialDefault();
+    edgeMaterial.maps[MATERIAL_MAP_DIFFUSE].color = RED;
 }
 
 void Renderer::drawScene(const GameCamera& camera, const Car& car, const Vector3& floorPosition) {
@@ -82,24 +109,11 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             Vector3 rotationAxis = { 0.0f, 1.0f, 0.0f }; // y-axis rotation
             float rotationAngleDegrees = currentAngle * RAD2DEG;
 
-            // create meshes for road parts
-            Mesh roadSegmentMesh = GenMeshCube(roadWidth, roadThickness, segmentLength);
-            Mesh dividerSegmentMesh = GenMeshCube(0.5f, roadThickness, segmentLength);
-            Mesh edgeSegmentMesh = GenMeshCube(0.3f, roadThickness, segmentLength);
-
             // transform for this segment
             Matrix segmentTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(segmentCenter.x, segmentCenter.y, segmentCenter.z));
 
-            // set up materials and colors
-            Material roadMaterial = LoadMaterialDefault();
-            roadMaterial.maps[MATERIAL_MAP_DIFFUSE].color = DARKGRAY;
-            Material dividerMaterial = LoadMaterialDefault();
-            dividerMaterial.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
-            Material edgeMaterial = LoadMaterialDefault();
-            edgeMaterial.maps[MATERIAL_MAP_DIFFUSE].color = RED;
-
             // draw main road surface
-            DrawMesh(roadSegmentMesh, roadMaterial, segmentTransform);
+            DrawMesh(this->roadSegmentMesh, this->roadMaterial, segmentTransform);
 
             // calculate direction vectors
             Vector2 tangent = RoadGeometry::getRoadTangentVector(currentCenterZ);
@@ -119,8 +133,8 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             if (static_cast<int>(z / segmentLength) % 4 < 2) { // skip every other set
                  Matrix leftDividerTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(leftDividerPos.x, leftDividerPos.y, leftDividerPos.z));
                  Matrix rightDividerTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(rightDividerPos.x, rightDividerPos.y, rightDividerPos.z));
-                 DrawMesh(dividerSegmentMesh, dividerMaterial, leftDividerTransform); 
-                 DrawMesh(dividerSegmentMesh, dividerMaterial, rightDividerTransform);
+                 DrawMesh(this->dividerSegmentMesh, this->dividerMaterial, leftDividerTransform); 
+                 DrawMesh(this->dividerSegmentMesh, this->dividerMaterial, rightDividerTransform);
             }
 
             // left edge position
@@ -136,16 +150,9 @@ void Renderer::draw3DScene(const GameCamera& camera, const Car& car, const Vecto
             // draw road edges
             Matrix leftEdgeTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(leftEdgePos.x, leftEdgePos.y, leftEdgePos.z));
             Matrix rightEdgeTransform = MatrixMultiply(MatrixRotate(rotationAxis, currentAngle), MatrixTranslate(rightEdgePos.x, rightEdgePos.y, rightEdgePos.z));
-            DrawMesh(edgeSegmentMesh, edgeMaterial, leftEdgeTransform); 
-            DrawMesh(edgeSegmentMesh, edgeMaterial, rightEdgeTransform);
+            DrawMesh(this->edgeSegmentMesh, this->edgeMaterial, leftEdgeTransform); 
+            DrawMesh(this->edgeSegmentMesh, this->edgeMaterial, rightEdgeTransform);
 
-            // clean up resources
-            UnloadMesh(roadSegmentMesh);
-            UnloadMesh(dividerSegmentMesh);
-            UnloadMesh(edgeSegmentMesh);
-            UnloadMaterial(roadMaterial);
-            UnloadMaterial(dividerMaterial);
-            UnloadMaterial(edgeMaterial);
         }
         // end of road drawing
 

@@ -28,6 +28,14 @@ private:
                    const std::vector<std::function<void(int, int)>>& drawFuncs);
     
     Model carModel;
+
+    // Cached resources for road rendering
+    Mesh roadSegmentMesh;
+    Mesh dividerSegmentMesh;
+    Mesh edgeSegmentMesh;
+    Material roadMaterial;
+    Material dividerMaterial;
+    Material edgeMaterial;
 };
 
 } // namespace CarGame
