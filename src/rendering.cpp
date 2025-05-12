@@ -23,7 +23,7 @@ namespace UI {
     
     const Color TextColor = BLACK;
     const Color HeaderColor = DARKBLUE;
-    const Color SectionColor = DARKGRAY;
+    const Color SectionColor = RED;
     const Color PanelColor = { 200, 200, 200, 180 };
 }
 
