@@ -194,16 +194,8 @@ The curriculum learning approach enables stable learning across all speed ranges
 
 **Mustafa Bektaş**  
 Advisor: Emre Uğur  
-Computer Engineering Department
+Software Engineering Department
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📧 Contact
-
-For questions or collaboration opportunities, please open an issue or contact the author.
